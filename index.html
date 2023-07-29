@@ -11,14 +11,39 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.6.0/p5.js"></script>
     
     <script src="https://cdnjs.cloudflare.com/ajax/libs/tone/14.7.77/Tone.js"></script>
+
+    <link
+      rel="preconnect"
+      href="https://fonts.googleapis.com"
+    >
+    <link
+      rel="preconnect"
+      href="https://fonts.gstatic.com"
+      crossorigin
+    >
+    <link
+      href="https://fonts.googleapis.com/css2?family=VT323&display=swap"
+      rel="stylesheet"
+    >
   </head>
 
   <body>
-    <main>
-      <button id="play-button">Click Me</button>
-    </main>
     <script src="sketch.js"></script>
     <script src="rect.js"></script>
     <script src="music.js"></script>
+    <main>
+      <button id="play-button" class="classic-button">Click Me</button>
+      <div
+        id="instructionContainer"
+        class="out"
+      >
+        <div id="header">
+          <h1>DUET</h1>
+          <button
+            id="closeButton"
+            class="classic-button"
+          ><span>&#x2715;</span></button>
+        </div>
+    </main>
   </body>
 </html>

@@ -70,10 +70,12 @@ function setup() {
   console.log("seed", s)
   randomSeed(s);
 
+  const isHorizontal = width > height
+
   const min = Math.min(width, height)
   const margin = min * 0.1;
 
-  const bgH = floor(random(360))//floor(random(180, 360 + 60) % 360)//
+  const bgH = floor(random(180, 360 + 60) % 360)//floor(random(360))//
   const bgS = 35
   const bgL = random(0, 20)
   bgColor = color(bgH, bgS, bgL)
@@ -100,18 +102,20 @@ function setup() {
   const focalFactor = getFactorOption(focalAltFuncKey)
   console.log("focalFactor", focalFactor)
 
+  const focX2 = isHorizontal ? width / 2 - margin / 2 : width - margin
+  const focY2 = isHorizontal ? height - margin : height / 2 - margin / 2
+
   focalRect = new R3CT({
     x1: margin,
     y1: margin,
-    x2: width/2 - margin/2,
-    y2: height - margin,
+    x2: focX2,
+    y2: focY2,
     measure: 32,
     factor: focalFactor,
     alterFunction: AlterIndexFunctions[focalAltFuncKey],
     color: focalColor,
     halfStop,
     buffer: focalBuff,
-    // startIndex: 0,
   }, {
     startingNote: NoteHertz.C[2],
     scale: "minor",
@@ -131,9 +135,12 @@ function setup() {
   const secFactor = getFactorOption(secAltFuncKey)
   console.log("secFactor", secFactor)
 
+  const secX1 = isHorizontal ? width / 2 + margin / 2 : margin
+  const secY1 = isHorizontal ? margin : height / 2 + margin / 2
+
   secRect = new R3CT({
-    x1: width / 2 + margin / 2,
-    y1: margin,
+    x1: secX1,
+    y1: secY1,
     x2: width - margin,
     y2: height - margin,
     measure: 32,
@@ -235,12 +242,13 @@ function handlePlay() {
 //TODO clean this up, make it simple DUET
 
 //MISC
-// [] make squares align to the largest dimension
-// [] make website to showcase WIP
+// [x] make squares align to the largest dimension
+// [x] make website to showcase WIP
 // start menue with, no music/music options + shortcuts (save image and fastforward), space bar to pause
 // [] add replay button, next button (or automatic checkbox?) shortcut to turn on automatic replay
 // [] rerender with same seed if screen size changes (if easy)
-// [] fine tune stroke width & alpha
+// [x] fine tune stroke width & alpha
+// [] warning if no Tone js
 
 //RYTHM
 // [] examan existing rythms
