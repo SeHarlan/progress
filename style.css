@@ -1,0 +1,49 @@
+@font-face {
+  font-family: 'W95FA';
+  src:
+    url('./w95fa.woff2') format('woff2 supports variations'),
+    url('./w95fa.woff2') format('woff2-variations');
+}
+
+html, body {
+  margin: 0;
+  padding: 0;
+  height: 100%;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  overflow: hidden;
+  font-smooth: never;
+  -webkit-font-smoothing : none;
+  background-color: black;
+}
+
+canvas {
+  display: block;
+}
+
+#play-button {
+  font-family: "W95FA";
+  font-size: 1rem;
+  z-index:10;
+  position: absolute;
+  bottom: 50%;
+  width: 6rem;
+  padding: 0.5rem;
+  left: calc(50% - 3rem);
+  font-weight: bold;
+  
+  outline: none;
+  border: none;
+  background-color: rgb(202, 198, 203);
+  box-shadow: rgb(70 65 71) -1px -1px 0px 0px inset, white 1px 1px 0px 0px inset, rgb(160 153 161) -2px -2px 0px 0px inset, rgb(222 220 222) 2px 2px 0px 0px inset;
+}
+
+#play-button:active {
+  background: linear-gradient(45deg, rgb(239, 238, 240) 25%, transparent 25%, transparent 75%, rgb(239, 238, 240) 75%, rgb(239, 238, 240)) 0px 0px / 2px 2px, rgb(202, 198, 203);
+  box-shadow: white -1px -1px 0px 0px inset, rgb(70, 65, 71) 1px 1px 0px 0px inset, rgb(222, 220, 222) -2px -2px 0px 0px inset, rgb(202, 198, 203) 2px 2px 0px 0px inset;
+}
+
+.hidden {
+  display: none;
+}
