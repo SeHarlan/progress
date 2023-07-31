@@ -1,6 +1,6 @@
 class R3CT {
   constructor(
-    { x1, y1, x2, y2, measure, factor, alterFunction, color, startIndex, halfStop, buffer, reverse },
+    { x1, y1, x2, y2, measure, factor, alterFunction, color, startIndex, halfStop, buffer, reverse, rotateBy, indexQuarterStart },
     { startingNote = 220, //220hz (A3) as lowest note
       scale = "pentatonic",
       waveType = random(['sine', 'triangle'])
@@ -10,8 +10,6 @@ class R3CT {
 
     this.reverse = reverse
 
-    
-
     this.complete = false;
     this.borderPoints = [];
     this.itterations = 0;
@@ -20,10 +18,11 @@ class R3CT {
 
     this.maxDist = dist(x1, y1, x2, y2)
 
-    this.measureDiv = 2
+    this.measureDiv = 2 //used for rythm
     this.measure = measure;
-    this.Xstep = floorToPrecision((x2 - x1) / (this.measure * 10), 10);
-    this.Ystep = floorToPrecision((y2 - y1) / (this.measure * 10), 10);
+
+    this.Xstep = (x2 - x1) / (this.measure * 10); //320 divisions w/ 32 measure length
+    this.Ystep = (y2 - y1) / (this.measure * 10); //320 divisions
     this.factor = factor;
     this.alterFunction = alterFunction;
     this.color = color;
@@ -53,7 +52,7 @@ class R3CT {
       left: RYTHMS[R2]
     }
        
-    for (let x = x1; x <= x2; x += this.Xstep) {
+    for (let x = x1; x < x2; x += this.Xstep) {
       const v1 = createVector(x, y1)
       v1.segment = "top"
       seg1.push(v1)
@@ -63,7 +62,8 @@ class R3CT {
       v3.segment = "bottom"
       seg2.push(v3)
     }
-    for (let y = y1; y <= y2; y += this.Ystep) {
+
+    for (let y = y1; y < y2; y += this.Ystep) {
       const v2 = createVector(x2, y);
       v2.segment = "right"
       seg1.push(v2)
@@ -76,18 +76,28 @@ class R3CT {
     
     this.borderPoints = seg1.concat(seg2)
 
-    debug && console.log("TOTAL LENGTH", this.borderPoints.length)
+    console.log("TOTAL LENGTH", this.borderPoints.length)
 
     const quarter = floor(this.borderPoints.length / 4)
-    for (let i = 0; i < random(5); i++) { 
+    for (let i = 0; i < rotateBy; i++) { 
       //rotate by quarters
       const quarterPoints = this.borderPoints.splice(0, quarter)
       this.borderPoints.push(...quarterPoints)
     }
 
-    const fourthStart = floor(this.borderPoints.length / 4) * round(random(1,4))
+    const fourthStart = floor(this.borderPoints.length / 4) * indexQuarterStart
 
     this.startIndex = startIndex !== undefined ? startIndex : fourthStart
+  }
+
+  replay() {
+    this.complete = false;
+    this.itterations = 0;
+  }
+
+  dispose() {
+    console.log("Disposed")
+    this.synth.dispose();
   }
 
   drawLine() {
@@ -160,7 +170,7 @@ class R3CT {
 
 
     //PLAY Music
-    if (withMusic) {
+    // if (withMusic) {
       //ref - https://pages.mtu.edu/~suits/NoteFreqCalcs.html
       const octaves = 3
       const baseStep = floor(map(p.dist(p1), step * 2, this.maxDist - step, (octaves*12), 0, true))
@@ -173,8 +183,10 @@ class R3CT {
       const modRangeTotal = modRange*3
       note *= map(modTotal, -modRangeTotal, modRangeTotal, 0.995, 1.005)//modulation
 
-      volume && (this.synth.triggerAttackRelease(note, "8n", undefined, volume));
-    }
+      const volMod = withMusic ? 1 : 0.33
+
+      volume && (this.synth.triggerAttackRelease(note, "8n", undefined, volume* volMod));
+    // }
 
 
     //END
@@ -184,8 +196,6 @@ class R3CT {
     const completed = this.itterations > endLen
     if (completed) {
       this.complete = true
-      setTimeout(() => this.synth.dispose(), 1000);
-
       console.log("complete")
     }
   }
