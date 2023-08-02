@@ -3,12 +3,18 @@ class R3CT {
     { x1, y1, x2, y2, measure, factor, alterFunction, color, startIndex, halfStop, buffer, reverse, rotateBy, indexQuarterStart },
     { startingNote = 220, //220hz (A3) as lowest note
       scale = "pentatonic",
-      waveType = random(['sine', 'triangle'])
+      waveType = random(['sine', 'triangle']),
+      R1 = random(Object.keys(RHYTHMS)),
+      R2 = random(Object.keys(RHYTHMS)),
+      rhythmReverse = random([true, false]),
     }
   ) {
     this.buffer = buffer
 
     this.reverse = reverse
+    this.rhythmReverse = rhythmReverse
+
+    console.log("Rhythm Reversed:", rhythmReverse)
 
     this.complete = false;
     this.borderPoints = [];
@@ -18,7 +24,7 @@ class R3CT {
 
     this.maxDist = dist(x1, y1, x2, y2)
 
-    this.measureDiv = 2 //used for rythm
+    this.measureDiv = 2 //used for rhythm
     this.measure = measure;
 
     this.Xstep = (x2 - x1) / (this.measure * 10); //320 divisions w/ 32 measure length
@@ -43,13 +49,13 @@ class R3CT {
     const seg1 = []
     const seg2 = []
 
-    const R1 = floor(random(1, 7))
-    const R2 = floor(random(1, 7))
-    this.rythms = {
-      top: RYTHMS[R1],
-      right: RYTHMS[R2],
-      bottom: RYTHMS[R1],
-      left: RYTHMS[R2]
+    console.log("Rythm 1", R1)
+    console.log("Rythm 2", R2)
+    this.rhythms = {
+      top: RHYTHMS[R1],
+      right: RHYTHMS[R2],
+      bottom: RHYTHMS[R1],
+      left: RHYTHMS[R2]
     }
        
     for (let x = x1; x < x2; x += this.Xstep) {
@@ -76,7 +82,7 @@ class R3CT {
     
     this.borderPoints = seg1.concat(seg2)
 
-    console.log("TOTAL LENGTH", this.borderPoints.length)
+    debug && console.log("TOTAL LENGTH", this.borderPoints.length)
 
     const quarter = floor(this.borderPoints.length / 4)
     for (let i = 0; i < rotateBy; i++) { 
@@ -114,8 +120,9 @@ class R3CT {
 
 
     const measureLength = this.measure / this.measureDiv
-    const rythm = this.rythms[p.segment]
-    const volume = musicDebug ? 0.5 : rythm(index, measureLength)
+    const rhythm = this.rhythms[p.segment]
+    const reversedRhythm = this.rhythmReverse || this.reverse
+    const volume = musicDebug ? 0.5 : rhythm(index, measureLength, reversedRhythm)
 
     //DRAW
     const step = min(this.Ystep, this.Xstep)
@@ -142,31 +149,23 @@ class R3CT {
 
     this.buffer.stroke(h, s, l, a)
 
-    if (!useWaveLineLength) {
-      //Standard
-      this.buffer.line(p.x, p.y, p1.x, p1.y)
-    } else {
+    const getStep = (step) => {
       //alter length to make edge patterns
-      const getStep = (step) => {
-        if (useWaveLineLength === "random") return random(-1, 1)
-        if (useWaveLineLength === "noise") return map(noise(step * 0.1), 0, 1, -1, 1)
-
-        //else WAVE based
-        const period = 200
-        const phase = 0//PI*1.5
-        const t = map(step, 0, len - 1, phase, TWO_PI * period + phase)
-        switch (this.waveType) {
-          case "sine": return sin(t);
-          case "triangle": return tri(t);
-        }
+      const period = 200
+      const phase = 0//PI*1.5
+      const t = map(step, 0, len - 1, phase, TWO_PI * period + phase)
+      switch (this.waveType) {
+        case "sine": return sin(t);
+        case "triangle": return tri(t);
       }
-      const edgeDepth = 0.01
-      const edgeStep1 = map(getStep(index), -1, 1, 0, edgeDepth)
-      const sinEdge1 = p5.Vector.lerp(p, p1, edgeStep1)
-      const edgeStep2 = map(getStep(p1Index), -1, 1, 0, edgeDepth)
-      const sinEdge2 = p5.Vector.lerp(p1, p, edgeStep2)
-      this.buffer.line(sinEdge1.x, sinEdge1.y, sinEdge2.x, sinEdge2.y)
     }
+    const edgeDepth = 0.01
+    const edgeStep1 = map(getStep(index), -1, 1, 0, edgeDepth)
+    const sinEdge1 = p5.Vector.lerp(p, p1, edgeStep1)
+    const edgeStep2 = map(getStep(p1Index), -1, 1, 0, edgeDepth)
+    const sinEdge2 = p5.Vector.lerp(p1, p, edgeStep2)
+    this.buffer.line(sinEdge1.x, sinEdge1.y, sinEdge2.x, sinEdge2.y)
+    
 
 
     //PLAY Music
@@ -181,7 +180,7 @@ class R3CT {
       musicDebug && console.log("===========")
 
       const modRangeTotal = modRange*3
-      note *= map(modTotal, -modRangeTotal, modRangeTotal, 0.995, 1.005)//modulation
+      note *= map(modTotal, -modRangeTotal, modRangeTotal, 0.993, 1.007)//modulation
 
       const volMod = withMusic ? 1 : 0.33
 

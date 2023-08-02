@@ -73,42 +73,75 @@ const ScaleStepMapping = (step, scaleType) => {
 }
 
 
-//Rythm
-const RYTHMS = {
-  1: (t, measureLength) => {
-    let note = measureLength - t % measureLength;
-    // if(index%2) note = 0
-    return map(note, 0, measureLength, 0, 1)
+//Rhythm
+const getBaseNote = (t, measureLength, reversed) => { 
+  if (reversed) return measureLength - (t % measureLength) - 1
+  return t % measureLength
+}
+const getMod = (note, mod) => { 
+  return note % round(mod) === 0
+}
+const RHYTHMS = {
+  sin: (t, measureLength, reversed) => {
+    let note = getBaseNote(t, measureLength, reversed)
+
+    note = map(note, 0, measureLength, -PI/2, TWO_PI-PI/2)
+    return map(sin(note), -1, 1, 0.1, 1, true)
   },
-  2: (t, measureLength) => {
-    let note = t % measureLength
-    note = map(note, 0, measureLength, 0, TWO_PI)
-    return map(sin(note), -1, 1, 0, 1, true)
+  square2: (t, measureLength, reversed) => {
+    let note = getBaseNote(t, measureLength, reversed)
+    const div = 2
+    const onOff = floor(note / (measureLength / div)) % 2
+    return map(onOff, 0, 1, 0.9, 0.1, true)
   },
-  3: (t, measureLength) => {
-    const st = t % measureLength
-    let note = 0.2
-    if (st % 2) note = random(0.6, 0.8)
-    if (!st % 5) note = 1
-    return note
+  square4: (t, measureLength, reversed) => {
+    let note = getBaseNote(t, measureLength, reversed)
+    const div = 4
+    const onOff = floor(note / (measureLength / div)) % 2
+    return map(onOff, 0, 1, 0.9, 0.1, true)
   },
-  4: (t, measureLength) => {
-    const st = t % measureLength
-    if (st % 2) return 0.4
-    if (st % 4) return 0.2;
-    return 1
+  fall: (t, measureLength, reversed) => {
+    let note = getBaseNote(t, measureLength, reversed)
+    return map(note, 0, measureLength, 1, 0)
   },
-  5: (t, measureLength) => {
-    const st = t % measureLength
-    switch (st) {
-      case 0: return 0.5;
-      case 4: return 1;
-      case 8: return 1;
-      default: return 0.2;
+  alternate: (t, measureLength, reversed) => {
+    const note = getBaseNote(t, measureLength, reversed) 
+    return note % 2 === 0 ? 0.9 : 0.25
+  },
+  staggered: (t, measureLength, reversed) => { 
+    const note = getBaseNote(t, measureLength, reversed) 
+    if (note === 0) return 1
+    if (getMod(note, measureLength/2)) return 0.8
+    if (getMod(note, measureLength/4)) return 0.4
+    return 0.1
+  },
+  stomp: (t, measureLength, reversed) => { 
+    const note = getBaseNote(t, measureLength, reversed) 
+    switch (note) { 
+      case 0: return 1
+      case 3: return 0.75
+      case 6: return 1
+      default: return 0.1
     }
   },
-  6: () => {
-    return constrain(randomGaussian(0.5, 0.25), 0, 1)
+  anticipate: (t, measureLength, reversed) => {
+    const note = getBaseNote(t, measureLength, reversed)
+    switch (note) {
+      case 0: return 1
+      case 6: return 0.8
+      case 14: return 0.5
+      default: return 0.1
+    }
   },
-  7: () => 0.5,
+  anticipateFull: (t, measureLength, reversed) => {
+    const note = getBaseNote(t, measureLength, reversed)
+    switch (note) {
+      case 0: return 1
+      case 4: return 0.6
+      case 8: return 1
+      case 14: return 0.8
+      case 15: return 0.4
+      default: return 0.1
+    }
+  }
 }

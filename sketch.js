@@ -13,6 +13,8 @@ let focalColor, secColor, focalFactor, secFactor;
 let focalAltFuncKey, secAltFuncKey;
 let focalRotateBy, secRotateBy;
 let focalIndexQuarterStart, secIndexQuarterStart;
+let focalR1, focalR2, secR1, secR2;
+let focalRhythmReverse
 
 let halfStop;
 
@@ -58,11 +60,11 @@ const AlterIndexFunctions = {
 // [x] instructions "m" for menu toggle, "s" for screenshot, space for pause, "f" for fastforward
 // [x] rerender with same seed if screen size changes (if easy)
 // [x] fine tune stroke width & alpha
-// [] warning if no Tone js
+// [x] warning if no Tone js
 
 //RYTHM
-// [] examan existing rythms
-// [] make a few new rythms (SQUARE WAVE)
+// [x] examan existing rhythms
+// [x] make a few new rhythms (SQUARE WAVE)
 
 //SCALES 
 // [] try out other scales
@@ -270,7 +272,8 @@ function keyPressed() {
     handleMenuToggle()
   }
   if (key == " ") {
-    handlePlayToggle()
+    if (playButton.className !== "hidden") handlePlayInit()
+    else handlePlayToggle()
   }
   if (key == "r") {
     handleReplay()
@@ -311,6 +314,9 @@ function handleRectSetUp() {
 
   focalRotateBy = random(5)
   focalIndexQuarterStart = round(random(1, 4))
+  focalR1 = getNewRhythm()
+  focalR2 = getNewRhythm()
+  focalRhythmReverse = random() > 0.66
  
 
   // Secondary / alt settings
@@ -328,9 +334,10 @@ function handleRectSetUp() {
 
   secRotateBy = random(5)
   secIndexQuarterStart = round(random(1, 4))
-
-  
+  secR1 = getNewRhythm()
+  secR2 = getNewRhythm()
 }
+const getNewRhythm = () => random(Object.keys(RHYTHMS))
 
 const handleRectCreate = () => {
   const isHorizontal = width > height
@@ -359,6 +366,9 @@ const handleRectCreate = () => {
     startingNote: NoteHertz.C[2],
     scale: "minor",
     waveType: "sine",
+    R1: focalR1,
+    R2: focalR2,
+    rhythmReverse: focalRhythmReverse
   })
 
 
@@ -384,6 +394,9 @@ const handleRectCreate = () => {
       startingNote: NoteHertz.C[1],
       scale: "minor",
       waveType: "triangle",
+      R1: secR1,
+      R2: secR2,
+      rhythmReverse: false
     }
   )
 }
@@ -450,7 +463,6 @@ function handleCloseMenu() {
 }
 
 function handleReplay(e,resizing = false) {
-  console.log("🚀 ~ file: sketch.js:453 ~ handleReplay ~ resizing :", resizing )
   background(bgColor);
   focalBuff.clear()
   secBuff.clear()
@@ -465,8 +477,8 @@ function handleReplay(e,resizing = false) {
 }
 
 function handleNew() {
-  focalRect.dispose()
-  secRect.dispose()
+  focalRect?.dispose()
+  secRect?.dispose()
   handleRectSetUp()
   handleRectCreate()
   handleReplay()
@@ -480,10 +492,13 @@ function handleResize() {
   focalBuff.colorMode(HSL)
   secBuff.colorMode(HSL)
 
-  secRect.dispose()
-  focalRect.dispose()
-  handleRectCreate()
-  handleReplay(undefined,true)
+  secRect?.dispose()
+  focalRect?.dispose()
+
+  if (playButton.className === "hidden") {
+    handleRectCreate()
+    handleReplay(undefined,true)
+  }
 }
 
 function downloadBlob(blob, name) {
