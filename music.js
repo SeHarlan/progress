@@ -61,7 +61,27 @@ const ScaleFunctionsMap = {
       case 11: return 10;
       default: return step;
     }
-  }
+  },
+  // mixolydian: (step) => { 
+  //   switch (step) {
+  //     case 1: return 0;
+  //     case 3: return 4;
+  //     case 6: return 5;
+  //     case 8: return 7;
+  //     case 11: return 10;
+  //     default: return step;
+  //   }
+  // },
+  // lydian: (step) => {
+  //   switch (step) {
+  //     case 1: return 0;
+  //     case 3: return 4;
+  //     case 5: return 6;
+  //     case 8: return 7;
+  //     case 10: return 9;
+  //     default: return step;
+  //   }
+  // },
 
 }
 

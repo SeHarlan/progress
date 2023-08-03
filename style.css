@@ -14,7 +14,7 @@ html, body {
   align-items: center;
   overflow: hidden;
   font-family: 'VT323', monospace;
-  background-color: black;
+  background-color: rgb(124, 124, 124);
 }
 
 * {

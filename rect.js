@@ -58,7 +58,7 @@ class R3CT {
       left: RHYTHMS[R2]
     }
        
-    for (let x = x1; x < x2; x += this.Xstep) {
+    for (let x = x1; x <= x2; x += this.Xstep) {
       const v1 = createVector(x, y1)
       v1.segment = "top"
       seg1.push(v1)
@@ -69,7 +69,7 @@ class R3CT {
       seg2.push(v3)
     }
 
-    for (let y = y1; y < y2; y += this.Ystep) {
+    for (let y = y1; y <= y2; y += this.Ystep) {
       const v2 = createVector(x2, y);
       v2.segment = "right"
       seg1.push(v2)
@@ -136,17 +136,19 @@ class R3CT {
     const p1Index = floor(this.alterFunction(index) * this.factor) % len
     const p1 = debug ? createVector(width / 2, height / 2) : this.borderPoints[p1Index]
 
-    const modRange = 8
-    const hMod = randomGaussian(0, modRange)
+    const hModRange = 4
+    const hMod = randomGaussian(0, hModRange)
     const h = hue(this.color) + hMod 
-    const sMod = randomGaussian(0, modRange)
+    const sModRange = 8
+    const sMod = randomGaussian(0, sModRange)
     const s = saturation(this.color) + sMod
-    const lMod = randomGaussian(0, modRange)
+    const lModRange = 6
+    const lMod = randomGaussian(0, lModRange)
     const l = lightness(this.color) + lMod
     const a = map(volume, 0,1, 0, 0.75)//alpha(this.color)
 
+    const modRangeTotal = hModRange + sModRange + lModRange
     const modTotal = hMod + sMod + lMod
-
     this.buffer.stroke(h, s, l, a)
 
     const getStep = (step) => {
@@ -179,7 +181,7 @@ class R3CT {
       musicDebug && console.log("HERTZ", note)
       musicDebug && console.log("===========")
 
-      const modRangeTotal = modRange*3
+      
       note *= map(modTotal, -modRangeTotal, modRangeTotal, 0.993, 1.007)//modulation
 
       const volMod = withMusic ? 1 : 0.33

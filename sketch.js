@@ -17,6 +17,7 @@ let focalR1, focalR2, secR1, secR2;
 let focalRhythmReverse
 
 let halfStop;
+let scale, rootNote
 
 let focalBuff, secBuff;
 
@@ -67,12 +68,12 @@ const AlterIndexFunctions = {
 // [x] make a few new rhythms (SQUARE WAVE)
 
 //SCALES 
-// [] try out other scales
-//     {} if enough scales assign palettes to scales
-//     {} else assign palettes to root notes
+// [x] try out other scales
+// [] assign black bg and white to a minor like mode
+// [] assign white bg and black to a major like mode
 
 //COLOR
-// [] try purposefull palettes for major/minor~
+// [x] try purposefull palettes for major/minor~
 // [] if not, fine tune the random selection
 
 //FACTORS
@@ -83,13 +84,6 @@ const AlterIndexFunctions = {
 // [] apply compression to music
 // [] try reverb (maybe chorus/phase?)
 // [] try square waves 
-
-
-//minting options
-// diff edition for each scale type
-// weights bg color based on scale type
-// root note based on bg color
-
 
 
 //DUET - An iteration of the Cardiod algorithm
@@ -262,18 +256,19 @@ async function playMusic() {
 }
 
 function keyPressed() {
+  if (key == " ") {
+    if (playButton.className !== "hidden") handlePlayInit()
+    else handlePlayToggle()
+  }
+  if (playButton.className !== "hidden") return
+  if (key == "m") {
+    handleMenuToggle()
+  }
   if (key == 's') {
     handleSaveScreenshot()
   }
   if (key == 'f') {
     handleFastForward()
-  }
-  if (key == "m") {
-    handleMenuToggle()
-  }
-  if (key == " ") {
-    if (playButton.className !== "hidden") handlePlayInit()
-    else handlePlayToggle()
   }
   if (key == "r") {
     handleReplay()
@@ -285,15 +280,48 @@ function keyPressed() {
 }
 
 function handleRectSetUp() {
-  const bgH = floor(random(180, 360 + 60) % 360)//floor(random(360))//
-  const bgS = 35
-  const bgL = random(0, 20)
+  scale = random(Object.keys(ScaleFunctionsMap))
+  console.log("scale", scale)
+
+  const pallette = {
+    major: {
+      bgH: () => random(360),
+      bgS: () => 50,
+      bgL: () => random(90, 100),
+      rectS: () => 50,
+      rectL: () => random(60,80),
+    },
+    minor: {
+      bgH: () => random(360),
+      bgS: () => 25,
+      bgL: () => random(0, 10),
+      rectS: () => 80,
+      rectL: () => random(60, 80),
+    },
+    pentatonic: {
+      bgH: () => random(360),//random() > 0.33 ? random(330, 360 + 30) % 360 : random(180, 240),
+      bgS: () => 20,
+      bgL: () => random(20, 50),
+      rectS: () => 65,
+      rectL: () => random(50, 80),
+    }
+  }
+
+  const bgH = pallette[scale].bgH()
+  const bgS = pallette[scale].bgS()
+  const bgL = pallette[scale].bgL()
   bgColor = color(bgH, bgS, bgL)
   debug && console.log("Bg Hue", bgH)
   background(bgColor);
 
+  const rootNotes = Object.keys(NoteHertz)
+  const noteIndex = round(map(bgH, 0, 360, 0, rootNotes.length - 1))
+  rootNote = rootNotes[noteIndex]
+  console.log("rootNote", rootNote)
+
   halfStop = random() > 0.95
   console.log("halfStop", halfStop)
+
 
   //Focal settings
   focalAltFuncKey = random() < standardFunctionChance ? "standard" : random(Object.keys(AlterIndexFunctions));
@@ -304,8 +332,8 @@ function handleRectSetUp() {
 
   const hOff = random(hOffsetOptions)
   const fH = (bgH + hOff) % 360;
-  const fS = 80;
-  const fL = random(40, 90);
+  const fS = pallette[scale].rectS();
+  const fL = pallette[scale].rectL(bgL);
   const fA = 0.75;
   focalColor = color(fH, fS, fL, fA)
 
@@ -324,8 +352,8 @@ function handleRectSetUp() {
   console.log("Secondary Alter Func:", secAltFuncKey)
   const secHOff = random(hOffsetOptions)
   const secH = (bgH + secHOff) % 360;
-  const secS = 80;
-  const secL = random(30, 80)
+  const secS = pallette[scale].rectS();
+  const secL = pallette[scale].rectL(bgL);
   const secA = 0.75//0.2;
   secColor = color(secH, secS, secL, secA)
 
@@ -363,8 +391,8 @@ const handleRectCreate = () => {
     rotateBy: focalRotateBy,
     indexQuarterStart: focalIndexQuarterStart,
   }, {
-    startingNote: NoteHertz.C[2],
-    scale: "minor",
+    startingNote: NoteHertz[rootNote][2],
+    scale: scale,
     waveType: "sine",
     R1: focalR1,
     R2: focalR2,
@@ -391,8 +419,8 @@ const handleRectCreate = () => {
     reverse: true
   },
     {
-      startingNote: NoteHertz.C[1],
-      scale: "minor",
+      startingNote: NoteHertz[rootNote][1],
+      scale: scale,
       waveType: "triangle",
       R1: secR1,
       R2: secR2,
