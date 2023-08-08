@@ -69,12 +69,12 @@ const AlterIndexFunctions = {
 
 //SCALES 
 // [x] try out other scales
-// [] assign black bg and white to a minor like mode
-// [] assign white bg and black to a major like mode
+// [x] assign black bg and white to a minor like mode
+// [x] assign white bg and black to a major like mode
 
 //COLOR
 // [x] try purposefull palettes for major/minor~
-// [] if not, fine tune the random selection
+// [] fine tune 1/1 color schemes
 
 //FACTORS
 // [x] confirm standard factor choices
@@ -82,8 +82,8 @@ const AlterIndexFunctions = {
 
 // MUSIC
 
-// [] make sure root note is being hit on shortest
-// [] low root note gets played on max dimension range so its more often, then diagonals just go lower 
+// [x] make sure root note is being hit on shortest
+// [x] low root note gets played on max dimension range so its more often, then diagonals just go lower 
 // [] fine tune octave range
 // [] apply compression to music
 // [] try reverb (maybe chorus/phase?)
@@ -316,7 +316,7 @@ function handleRectSetUp() {
       bgS: () => 25,
       bgL: () => random(5, 15),
       rectS: () => 80,
-      rectL: () => random(60, 80),
+      rectL: () => random(55, 75),
     },
     pentatonic: {
       bgH: () => random(360),//random() > 0.33 ? random(330, 360 + 30) % 360 : random(180, 240),

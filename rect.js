@@ -145,13 +145,13 @@ class R3CT {
     const p1Index = floor(this.alterFunction(index) * this.factor) % len
     const p1 = debug ? createVector(width / 2, height / 2) : this.borderPoints[p1Index]
 
-    const hModRange = 7
+    const hModRange = 8
     const hMod = randomGaussian(0, hModRange)
     const h = hue(this.color) + hMod 
-    const sModRange = 8
+    const sModRange = 4
     const sMod = randomGaussian(0, sModRange)
     const s = saturation(this.color) + sMod
-    const lModRange = 9
+    const lModRange = 6
     const lMod = randomGaussian(0, lModRange)
     const l = lightness(this.color) + lMod
     const a = map(volume, 0,1, 0, 0.75)//alpha(this.color)
