@@ -81,9 +81,16 @@ const AlterIndexFunctions = {
 // [x] make sure they work with other factor functions (trim out fucntions with no variation)
 
 // MUSIC
+
+// [] make sure root note is being hit on shortest
+// [] low root note gets played on max dimension range so its more often, then diagonals just go lower 
+// [] fine tune octave range
 // [] apply compression to music
 // [] try reverb (maybe chorus/phase?)
 // [] try square waves 
+// [] double tap to play/pause
+
+// black and white 1/1 versions w/ _____ scales
 
 
 //DUET - An iteration of the Cardiod algorithm
@@ -217,8 +224,11 @@ async function playMusic() {
 
   }
 
-  secRect.drawLine()
-  focalRect.drawLine()
+  const secNoteProps = secRect.drawLine()
+  const focalNoteProps = focalRect.drawLine()
+
+  focalRect.playNote(...focalNoteProps)
+  secRect.playNote(...secNoteProps)
 
 
   //MUTLI RECTS
@@ -232,6 +242,15 @@ async function playMusic() {
 
 
   background(bgColor)
+
+  //canvas shadow
+  const shadowL = lightness(bgColor) >= 20 ? 0 : 100
+  const shadowOffset = min(width, height) * 0.0025
+  drawingContext.shadowColor = color(hue(bgColor), saturation(bgColor), shadowL, 0.3)
+  drawingContext.shadowBlur = shadowOffset*1.5
+  drawingContext.shadowOffsetX = 0
+  drawingContext.shadowOffsetY = shadowOffset
+
   image(secBuff, 0, 0)
   image(focalBuff, 0, 0)
 
@@ -280,7 +299,8 @@ function keyPressed() {
 }
 
 function handleRectSetUp() {
-  scale = random(Object.keys(ScaleFunctionsMap))
+  // scale = random(Object.keys(ScaleFunctionsMap))
+  scale = Object.keys(ScaleFunctionsMap).sort(() => random() - 0.35)[0]
   console.log("scale", scale)
 
   const pallette = {
@@ -294,7 +314,7 @@ function handleRectSetUp() {
     minor: {
       bgH: () => random(360),
       bgS: () => 25,
-      bgL: () => random(0, 10),
+      bgL: () => random(5, 15),
       rectS: () => 80,
       rectL: () => random(60, 80),
     },
@@ -304,7 +324,49 @@ function handleRectSetUp() {
       bgL: () => random(20, 50),
       rectS: () => 65,
       rectL: () => random(50, 80),
-    }
+    },
+    // lydian: {
+    //   bgH: () => random(360),
+    //   bgS: () => 5,
+    //   bgL: () => 95,
+    //   rectS: () => 1,
+    //   rectL: () => 33,
+    // },
+    lydian: {
+      bgH: () => random(360),
+      bgS: () => 1,
+      bgL: () => 99,
+      rectS: () => 1,
+      rectL: () => 5,
+    },
+    mixolydian: {
+      bgH: () => random(360),
+      bgS: () => 1,
+      bgL: () => 99,
+      rectS: () => 1,
+      rectL: () => 5,
+    },
+    // dorian: {
+    //   bgH: () => random(360),
+    //   bgS: () => 5,
+    //   bgL: () => 5,
+    //   rectS: () => 1,
+    //   rectL: () => 66,
+    // },
+    dorian: {
+      bgH: () => random(360),
+      bgS: () => 1,
+      bgL: () => 1,
+      rectS: () => 1,
+      rectL: () => 95,
+    },
+    phrygian: {
+      bgH: () => random(360),
+      bgS: () => 1,
+      bgL: () => 1,
+      rectS: () => 1,
+      rectL: () => 95,
+    },
   }
 
   const bgH = pallette[scale].bgH()
@@ -333,7 +395,7 @@ function handleRectSetUp() {
   const hOff = random(hOffsetOptions)
   const fH = (bgH + hOff) % 360;
   const fS = pallette[scale].rectS();
-  const fL = pallette[scale].rectL(bgL);
+  const fL = pallette[scale].rectL();
   const fA = 0.75;
   focalColor = color(fH, fS, fL, fA)
 
@@ -353,9 +415,10 @@ function handleRectSetUp() {
   const secHOff = random(hOffsetOptions)
   const secH = (bgH + secHOff) % 360;
   const secS = pallette[scale].rectS();
-  const secL = pallette[scale].rectL(bgL);
-  const secA = 0.75//0.2;
+  const secL = pallette[scale].rectL();
+  const secA = 0.75
   secColor = color(secH, secS, secL, secA)
+
 
   secFactor = getFactorOption(secAltFuncKey)
   console.log("secFactor", secFactor)
@@ -370,8 +433,8 @@ const getNewRhythm = () => random(Object.keys(RHYTHMS))
 const handleRectCreate = () => {
   const isHorizontal = width > height
 
-  const min = Math.min(width, height)
-  margin = min * 0.1;
+  const minDimension = min(width, height)
+  margin = minDimension * 0.1;
 
 
   const focX2 = isHorizontal ? width / 2 - margin / 2 : width - margin
@@ -391,7 +454,7 @@ const handleRectCreate = () => {
     rotateBy: focalRotateBy,
     indexQuarterStart: focalIndexQuarterStart,
   }, {
-    startingNote: NoteHertz[rootNote][2],
+    startingNote: NoteHertz[rootNote][4],
     scale: scale,
     waveType: "sine",
     R1: focalR1,
@@ -419,7 +482,7 @@ const handleRectCreate = () => {
     reverse: true
   },
     {
-      startingNote: NoteHertz[rootNote][1],
+      startingNote: NoteHertz[rootNote][2],
       scale: scale,
       waveType: "triangle",
       R1: secR1,
