@@ -318,7 +318,7 @@ class R3CT {
         this.borderBuffer.fill(decoCol)
         this.borderBuffer.rectMode(CENTER)
         this.borderBuffer.strokeCap(PROJECT)
-        const minLen = sw*2.5
+        const minLen = sw*2
         const decorationRound = this.iterations % 2
         const useBit = (this.useBitcrusher && this.useDelay) ? decorationRound === 1 : this.useBitcrusher
 
