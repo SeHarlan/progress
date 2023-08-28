@@ -15,11 +15,16 @@ let focalRotateBy, secRotateBy;
 let focalIndexQuarterStart, secIndexQuarterStart;
 let focalR1, focalR2, secR1, secR2;
 let focalRhythmReverse
+let decoType
+let focalUseDelay, secUseDelay
+let focalUseBitcrusher, secUseBitcrusher
 
 let halfStop;
-let scale, rootNote
+let scale, rootNote, upNote
 
 let focalBuff, secBuff;
+let focalBorderBuff, secBorderBuff;
+let textBuff
 
 let margin
 
@@ -52,6 +57,9 @@ const AlterIndexFunctions = {
   "sq": (i) => sq(i),
   "sqrt": (i) => sqrt(i)
 }
+
+const getUseBitcrusher = () => random() < 0.33
+const getUseDelay = () => random() < 0.33
 //TODO clean this up, make it simple DUET
 
 //MISC
@@ -85,20 +93,19 @@ const AlterIndexFunctions = {
 // [x] make sure root note is being hit on shortest
 // [x] low root note gets played on max dimension range so its more often, then diagonals just go lower 
 // [] fine tune octave range
-// [] apply compression to music
-// [] try reverb (maybe chorus/phase?)
-// [] try square waves 
+// [x] apply compression to music
+// [x] try reverb (maybe chorus/phase?)
+// [x] try square waves 
 // [] double tap to play/pause
+// [x] try bg styles that corrispond with effects like distortion and chorus
+// [] try rect colros determine octave starting point, 
+// [x] move effects bools to set up func
+// [x] make sure memory is being cleaned up on replay and new (audio degrades with effects after like 5 plays)
+// [x] try straight borders
+// confirm black and white 1/1 versions w/ _____ scales
 
-// black and white 1/1 versions w/ _____ scales
-
-
-//DUET - An iteration of the Cardiod algorithm
 
 function setup() {
-  const scl = 0.65
-  // createCanvas(2880*scl, 5120*scl);
-  // createCanvas(5120*scl, 5120*scl);
   createCanvas(windowWidth, windowHeight)
   colorMode(HSL)
   frameRate(musicFR)
@@ -118,14 +125,25 @@ function setup() {
   // }
 
   focalBuff = createGraphics(width, height)
-  secBuff = createGraphics(width, height)
   focalBuff.colorMode(HSL)
+  secBuff = createGraphics(width, height)
   secBuff.colorMode(HSL)
 
+  focalBorderBuff = createGraphics(width, height)
+  focalBorderBuff.colorMode(HSL)
+  secBorderBuff = createGraphics(width, height)
+  secBorderBuff.colorMode(HSL)
+
+  textBuff = createGraphics(width, height)
+  textBuff.colorMode(HSL)
+
+  // drawBGTexture(textBuff, "bubbles")
+  
 
   const s = random(1000)
   console.log("seed", s)
   randomSeed(s);
+  noiseSeed(s);
 
   handleRectSetUp()
   //set up happens on play so mobile devices can play audio
@@ -152,56 +170,6 @@ function setup() {
   newButton.onclick = handleNew
 
   window.addEventListener("resize", debounce(handleResize, 300))
-
-  //MUTLI RECTS
-  // const yspace = (height - (margin * 2)) / 2
-  // const xspace = (width - (margin * 2)) / 2
-  // for (let y = margin; y < height - margin; y += yspace) {
-  //   for (let x = margin; x < width - margin; x += xspace) {
-  //     const ABuffer = createGraphics(width, height)
-  //     ABuffer.colorMode(HSL)
-  //     Bufs.push(ABuffer)
-
-  //     const focalAltFuncKey = random() < standardFunctionChance ? "standard" : random(Object.keys(AlterIndexFunctions));
-
-  //     console.log("Focal Alter Func:", focalAltFuncKey)
-
-  //     const hOffsetOptions = [0, 180]
-
-  //     const hOff = random(hOffsetOptions)
-  //     const fH = (bgH + hOff) % 360;
-  //     const fS = 80;
-  //     const fL = random(40, 90);
-  //     const fA = 0.75;
-  //     const focalColor = color(fH, fS, fL, fA)
-
-  //     const focalFactor = getFactorOption(focalAltFuncKey)
-  //     console.log("focalFactor", focalFactor)
-
-  //     const focX2 = isHorizontal ? width / 2 - margin / 2 : width - margin
-  //     const focY2 = isHorizontal ? height - margin : height / 2 - margin / 2
-
-  //     const newRect = new R3CT({
-  //       x1: x,
-  //       y1: y,
-  //       x2: x + xspace,
-  //       y2: y + yspace,
-  //       measure: 32,
-  //       factor: focalFactor,
-  //       alterFunction: AlterIndexFunctions[focalAltFuncKey],
-  //       color: focalColor,
-  //       halfStop,
-  //       buffer: ABuffer,
-  //       reverse: random() > 0.5
-  //     }, {
-  //       startingNote: NoteHertz.C[((Bufs.length+1))],
-  //       scale: "pentatonic",
-  //       waveType: "sine",
-  //     })
-  //     Rects.push(newRect)
-  //   }
-  // }
-
 }
 
 function draw() {
@@ -217,11 +185,7 @@ async function playMusic() {
 
     if (isRecording) {
       setTimeout(stopRecording, 1000)
-      // recorder.stop();
-      // const audioBlob = await audioRecorder.stop();
-      // downloadBlob(audioBlob, "audio.wav");
     }
-
   }
 
   const secNoteProps = secRect.drawLine()
@@ -230,35 +194,24 @@ async function playMusic() {
   focalRect.playNote(...focalNoteProps)
   secRect.playNote(...secNoteProps)
 
-
-  //MUTLI RECTS
-  // if (Bufs[0].complete) {
-  //   noLoop()
-  //   console.log("All Complete")
-  // }
-  // Rects.forEach((rect, i) => {
-  //   rect.drawLine()
-  // })
-
-
   background(bgColor)
+  drawingContext.shadowColor = color(0,0,0,0)
+  image(textBuff, 0, 0)
+  image(focalBorderBuff, 0, 0)
+  image(secBorderBuff, 0, 0)
 
   //canvas shadow
-  const shadowL = lightness(bgColor) >= 20 ? 0 : 100
+  const darkBG = lightness(bgColor) < 20
+  const shadowL = darkBG ? 100 : 0
   const shadowOffset = min(width, height) * 0.0025
   drawingContext.shadowColor = color(hue(bgColor), saturation(bgColor), shadowL, 0.3)
   drawingContext.shadowBlur = shadowOffset*1.5
   drawingContext.shadowOffsetX = 0
-  drawingContext.shadowOffsetY = shadowOffset
+  drawingContext.shadowOffsetY = shadowOffset * (darkBG ? -1 : 1)
 
+ 
   image(secBuff, 0, 0)
   image(focalBuff, 0, 0)
-
-  //MUTLI RECTS
-  // Bufs.forEach((buf, i) => {
-  //   image(buf, 0, 0)
-  // })
-
 
   if (debug) {
     stroke(0, 0, 100)
@@ -299,8 +252,8 @@ function keyPressed() {
 }
 
 function handleRectSetUp() {
-  // scale = random(Object.keys(ScaleFunctionsMap))
-  scale = Object.keys(ScaleFunctionsMap).sort(() => random() - 0.35)[0]
+  scale = random(Object.keys(ScaleFunctionsMap))
+  // scale = Object.keys(ScaleFunctionsMap).sort(() => random() - 0.35)[0]
   console.log("scale", scale)
 
   const pallette = {
@@ -375,10 +328,14 @@ function handleRectSetUp() {
   bgColor = color(bgH, bgS, bgL)
   debug && console.log("Bg Hue", bgH)
   background(bgColor);
+  image(textBuff, 0, 0)
+
+  decoType = "straight-dots"//random(["scattered-dots", "straight"]) //"straight-dots", "scattered"
 
   const rootNotes = Object.keys(NoteHertz)
   const noteIndex = round(map(bgH, 0, 360, 0, rootNotes.length - 1))
   rootNote = rootNotes[noteIndex]
+
   console.log("rootNote", rootNote)
 
   halfStop = random() > 0.95
@@ -387,6 +344,8 @@ function handleRectSetUp() {
 
   //Focal settings
   focalAltFuncKey = random() < standardFunctionChance ? "standard" : random(Object.keys(AlterIndexFunctions));
+  focalUseDelay = getUseDelay()
+  focalUseBitcrusher = getUseBitcrusher()
 
   console.log("Focal Alter Func:", focalAltFuncKey)
 
@@ -411,6 +370,9 @@ function handleRectSetUp() {
 
   // Secondary / alt settings
   secAltFuncKey = random() < standardFunctionChance ? "standard" : random(Object.keys(AlterIndexFunctions));
+  secUseDelay = getUseDelay()
+  secUseBitcrusher = getUseBitcrusher()
+
   console.log("Secondary Alter Func:", secAltFuncKey)
   const secHOff = random(hOffsetOptions)
   const secH = (bgH + secHOff) % 360;
@@ -451,15 +413,19 @@ const handleRectCreate = () => {
     color: focalColor,
     halfStop,
     buffer: focalBuff,
+    borderBuffer: focalBorderBuff,
     rotateBy: focalRotateBy,
     indexQuarterStart: focalIndexQuarterStart,
+    decoType
   }, {
     startingNote: NoteHertz[rootNote][4],
     scale: scale,
     waveType: "sine",
     R1: focalR1,
     R2: focalR2,
-    rhythmReverse: focalRhythmReverse
+    rhythmReverse: focalRhythmReverse,
+    useBitcrusher: focalUseBitcrusher,
+    useDelay: focalUseDelay
   })
 
 
@@ -477,9 +443,11 @@ const handleRectCreate = () => {
     color: secColor,
     halfStop,
     buffer: secBuff,
+    borderBuffer: secBorderBuff,
     rotateBy: secRotateBy,
     indexQuarterStart: secIndexQuarterStart,
-    reverse: true
+    reverse: true,
+    decoType
   },
     {
       startingNote: NoteHertz[rootNote][2],
@@ -487,7 +455,9 @@ const handleRectCreate = () => {
       waveType: "triangle",
       R1: secR1,
       R2: secR2,
-      rhythmReverse: false
+      rhythmReverse: false,
+      useBitcrusher: secUseBitcrusher,
+      useDelay: secUseDelay
     }
   )
 }
@@ -533,11 +503,11 @@ function handlePlayInit() {
   handleRectCreate()
   handlePlay()
 
-  if (isRecording) {
-    getAudioVideoStream()
-    // recorder.start();
-    // audioRecorder.start();
-  }
+  // if (isRecording) {
+  //   getAudioVideoStream()
+  //   // recorder.start();
+  //   // audioRecorder.start();
+  // }
 }
 
 function handleMenuToggle() { 
@@ -557,6 +527,8 @@ function handleReplay(e,resizing = false) {
   background(bgColor);
   focalBuff.clear()
   secBuff.clear()
+  focalBorderBuff.clear()
+  secBorderBuff.clear()
   focalRect.replay()
   secRect.replay()
   
@@ -570,6 +542,10 @@ function handleReplay(e,resizing = false) {
 function handleNew() {
   focalRect?.dispose()
   secRect?.dispose()
+  const s = new Date().getTime()
+  console.log("seed", s)
+  randomSeed(s);
+  noiseSeed(s);
   handleRectSetUp()
   handleRectCreate()
   handleReplay()
@@ -692,12 +668,25 @@ function debounce(func, wait) {
 //TOUCH FUNCTIONS
 let touchStartPos = null;
 let touchEndPos = null;
+let lastTouchTime = 0;
 
 const minSwipeDistance = 100;
+const doubleTapInterval = 400; // Time in milliseconds between taps to be considered a double tap
+
 
 function touchStarted(e) {
+  if (playButton.className !== "hidden") return
   if (menuContainer.contains(e.target) || e.target === playButton) return
-  
+
+  let currentTime = millis();
+  if (currentTime - lastTouchTime < doubleTapInterval) {
+    //handle double tap
+    handlePlayToggle()
+  }
+
+  // double tap
+  lastTouchTime = currentTime;
+
   //handle swipe
   touchStartPos = createVector(mouseX, mouseY);
   return false

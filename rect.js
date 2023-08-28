@@ -1,16 +1,18 @@
 class R3CT {
   constructor(
-    { x1, y1, x2, y2, measure, factor, alterFunction, color, startIndex, halfStop, buffer, reverse, rotateBy, indexQuarterStart },
+    { x1, y1, x2, y2, measure, factor, alterFunction, color, startIndex, halfStop, buffer, borderBuffer, reverse, rotateBy, indexQuarterStart, decoType },
     { startingNote = 220, //220hz (A3) as lowest note
       scale = "pentatonic",
       waveType = random(['sine', 'triangle']),
       R1 = random(Object.keys(RHYTHMS)),
       R2 = random(Object.keys(RHYTHMS)),
       rhythmReverse = random([true, false]),
+      useDelay = random() < 0.33,
+      useBitcrusher = random() < 0.33,
     }
   ) {
     this.buffer = buffer
-
+    this.borderBuffer = borderBuffer
     this.reverse = reverse
     this.rhythmReverse = rhythmReverse
 
@@ -18,7 +20,7 @@ class R3CT {
 
     this.complete = false;
     this.borderPoints = [];
-    this.itterations = 0;
+    this.iterations = 0;
 
     this.waveType = waveType
 
@@ -36,8 +38,7 @@ class R3CT {
 
     this.Xstep = (x2 - x1) / (this.measure * 10); //320 divisions w/ 32 measure length
     this.Ystep = (y2 - y1) / (this.measure * 10); //320 divisions
-    // this.Xstep *= 2
-    // this.Ystep *= 2
+
     this.factor = factor;
     this.alterFunction = alterFunction;
     this.color = color;
@@ -47,13 +48,72 @@ class R3CT {
     this.startingNote = startingNote
     this.scale = scale
 
-    // const comp = new Tone.Compressor(-100, 10)
+    
     this.synth = new Tone.Synth({
       oscillator: {
         type: this.waveType
       }
-    }).toDestination();
+    })
 
+    this.useBitcrusher = useBitcrusher
+    this.useDelay = useDelay
+
+    this.decoType = decoType
+
+
+    const gain1 = new Tone.Gain(1.5)
+    const delay = new Tone.PingPongDelay("4n", 0.2)
+    const delEq = new Tone.EQ3(-5, 0, 2)
+    delay.connect(delEq)
+    delay.wet.value = this.useDelay ? 0.25 : 0
+
+    const compressor = new Tone.Compressor({
+      ratio: 5,
+      threshold: -30,
+      release: 0.25,
+      attack: 0.003,
+      knee: 30
+    })
+    const compressor2 = new Tone.Compressor({
+      ratio: 20,
+      threshold: -5,
+      release: 0.25,
+      attack: 0.003,
+      knee: 30
+    })
+
+    const bitCrusher = new Tone.BitCrusher(4)
+    const bdEq = new Tone.EQ3(0, -2, -8)
+    bitCrusher.connect(bdEq)
+    
+    bitCrusher.wet.value = this.useBitcrusher ? 0.25 : 0
+
+    const vibrato = new Tone.Vibrato(5, 0.1)
+    // vibrato.wet.value = 0.25
+    
+    const panner = new Tone.Panner(waveType === "triangle" ? 0.75 : -0.75)
+    const gain2 = new Tone.Gain(1.5)
+    const limiter = new Tone.Limiter(-1)
+    const eq = new Tone.EQ3(-4, 0, -3)
+    const eq2 = new Tone.EQ3(5, 1, 0)
+
+    this.fxChain = [
+      panner,
+      eq,
+      gain1,
+      compressor,
+      vibrato,
+      bitCrusher,
+      bdEq,
+      delay,
+      delEq,
+      compressor2,
+      eq2,
+      gain2,
+      limiter,
+      Tone.Destination
+    ]
+    this.synth.chain(...this.fxChain)
 
     const seg1 = []
     const seg2 = []
@@ -67,6 +127,7 @@ class R3CT {
       left: RHYTHMS[R2]
     }
        
+    this.horLen
     for (let x = x1; x <= x2; x += this.Xstep) {
       const v1 = createVector(x, y1)
       v1.segment = "top"
@@ -77,6 +138,8 @@ class R3CT {
       v3.segment = "bottom"
       seg2.push(v3)
     }
+    this.horLen = seg1.length
+    this.vertLen = seg2.length
 
     for (let y = y1; y <= y2; y += this.Ystep) {
       const v2 = createVector(x2, y);
@@ -107,12 +170,24 @@ class R3CT {
 
   replay() {
     this.complete = false;
-    this.itterations = 0;
+    this.iterations = 0;
   }
 
   dispose() {
     console.log("Disposed")
+    //skip destination as an fx
+    for (let i = this.fxChain.length - 2; i >= 0; i--) { 
+      const fx1 = this.fxChain[i]
+      const fx2 = this.fxChain[i + 1]
+      fx1.disconnect(fx2)
+    }
+    for (let i = this.fxChain.length - 2; i >= 0; i--) {
+      this.fxChain[i].dispose()
+      this.fxChain[i] = null
+    }
+
     this.synth.dispose();
+    this.synth = null
   }
 
   drawLine() {
@@ -121,15 +196,17 @@ class R3CT {
     const len = this.borderPoints.length;
 
 
-    let index = (this.startIndex + this.itterations) % len;
+    let index = (this.startIndex + this.iterations) % len;
 
     if (this.reverse) index = len - index - 1
 
     const p = this.borderPoints[index]
 
+    const side = p.segment
+
 
     const measureLength = this.measure / this.measureDiv
-    const rhythm = this.rhythms[p.segment]
+    const rhythm = this.rhythms[side]
     const reversedRhythm = this.rhythmReverse || this.reverse
     const volume = musicDebug ? 0.5 : rhythm(index, measureLength, reversedRhythm)
 
@@ -138,8 +215,6 @@ class R3CT {
 
     const sw = max(step * 0.5, 0.5)//0.6
 
-
-    
     this.buffer.strokeCap(SQUARE)
 
     const p1Index = floor(this.alterFunction(index) * this.factor) % len
@@ -154,7 +229,9 @@ class R3CT {
     const lModRange = 6
     const lMod = randomGaussian(0, lModRange)
     const l = lightness(this.color) + lMod
-    const a = map(volume, 0,1, 0, 0.75)//alpha(this.color)
+    const minAlpha = 0.05//0
+    const maxAlpha = 0.66//0.75
+    const a = map(volume, 0,1, minAlpha, maxAlpha)//0,0.75
 
     const modRangeTotal = hModRange + sModRange + lModRange
     const modTotal = hMod + sMod + lMod
@@ -177,38 +254,23 @@ class R3CT {
     const sinEdge2 = p5.Vector.lerp(p1, p, edgeStep2) 
 
 
-
-
     //PLAY Music
-    // if (withMusic) {
-      //ref - https://pages.mtu.edu/~suits/NoteFreqCalcs.html
-      const octaves = 1
-      const baseStep = floor(map(p.dist(p1), step*this.measure, this.maxDist, (octaves*12), 0, true))
 
-      const scaleStep = ScaleStepMapping(baseStep, this.scale)
-    // if (this.waveType === "triangle") console.log("🚀 ~ file: rect.js:201 ~ R3CT ~ drawLine ~ scaleStep:", scaleStep)
-      const aConstant = 2 ** (1 / 12)
-      let note = round((this.startingNote * (aConstant) ** scaleStep) * 1000) / 1000
-      musicDebug && console.log("HERTZ", note)
-      musicDebug && console.log("===========")
+    //ref - https://pages.mtu.edu/~suits/NoteFreqCalcs.html
+    const octaves = 1
+    const maxStep = 12 * octaves
+    const baseStep = floor(map(p.dist(p1), step*this.measure, this.maxDist, maxStep, 0, true))
 
-      
-      note *= map(modTotal, -modRangeTotal, modRangeTotal, 0.993, 1.007)//modulation
+    const scaleStep = ScaleStepMapping(baseStep, this.scale)
+  // if (this.waveType === "triangle") console.log("🚀 ~ file: rect.js:201 ~ R3CT ~ drawLine ~ scaleStep:", scaleStep)
+    const aConstant = 2 ** (1 / 12)
+    let note = round((this.startingNote * (aConstant) ** scaleStep) * 1000) / 1000
+    musicDebug && console.log("HERTZ", note)
+    musicDebug && console.log("===========")
 
-      const volMod = withMusic ? 1 : 0.33
+    note *= map(modTotal, -modRangeTotal, modRangeTotal, 0.993, 1.007)//modulation
 
-      // volume && (this.synth.triggerAttackRelease(note, "8n", undefined, volume* volMod));
-    // }
-
-
-    //shadow and highlight
-    // this.buffer.strokeWeight(sw*0.5)
-    // const shadowDist = sw*0.5
-    // this.buffer.stroke(h, s, l * 0.25, a*0.5)
-    // this.buffer.line(sinEdge1.x, sinEdge1.y + shadowDist, sinEdge2.x, sinEdge2.y + shadowDist)
-
-    // this.buffer.stroke(h, s, l * 1.5, a*0.5)
-    // this.buffer.line(sinEdge1.x, sinEdge1.y - shadowDist, sinEdge2.x, sinEdge2.y - shadowDist)
+    const volMod = withMusic ? 1 : 0.33
 
     //alt colors
     const isDorian = this.scale === "dorian"
@@ -228,17 +290,155 @@ class R3CT {
         ? -30
         : 30
       : 0
+    const col = color(h, s+modS, l+modL, a)
     this.buffer.strokeWeight(sw)
-    this.buffer.stroke(h, s+modS, l+modL, a)
+    this.buffer.stroke(col)
     this.buffer.line(sinEdge1.x, sinEdge1.y, sinEdge2.x, sinEdge2.y)
+
+
+    const DECO_TYPE = this.decoType//"scattered-dots"//"straight-dots"//"scattered"//"straight
+
+    const getDecoP = (point, pDist) => {
+      switch (side) {
+        case "top": return createVector(point.x, point.y - pDist)
+        case "right": return createVector(point.x + pDist, point.y)
+        case "bottom": return createVector(point.x, point.y + pDist)
+        case "left": return createVector(point.x - pDist, point.y)
+      }
+    }
+    const decAl = map(a, minAlpha, maxAlpha, minAlpha, maxAlpha/2)
+    const decoCol = color(h, s+modS, l+modL, decAl)
+    switch (DECO_TYPE) {
+      case "straight-dots": { 
+        const borderDist = sw * 8
+        const dP = getDecoP(p, borderDist)
+        
+
+        this.borderBuffer.stroke(decoCol)
+        this.borderBuffer.fill(decoCol)
+        this.borderBuffer.rectMode(CENTER)
+        this.borderBuffer.strokeCap(PROJECT)
+        const minLen = sw*2.5
+        const decorationRound = this.iterations % 2
+        const useBit = (this.useBitcrusher && this.useDelay) ? decorationRound === 1 : this.useBitcrusher
+
+        const pDist = minLen + minLen * (maxStep - scaleStep)
+        const dP2 = getDecoP(dP, pDist)
+        if (useBit) {
+          this.borderBuffer.strokeWeight(sw)
+          this.borderBuffer.line(dP.x, dP.y, dP2.x, dP2.y)
+        }
+        const useDel = (this.useBitcrusher && this.useDelay) ? decorationRound === 0 : this.useDelay
+        if (useDel) {
+          this.borderBuffer.noStroke()
+          this.borderBuffer.circle(dP.x, dP.y, sw*1.75)
+          this.borderBuffer.circle(dP2.x, dP2.y, sw*1.75)
+          // for (let i = 0; i <= maxStep - scaleStep + 1; i++) { 
+          //   const dP2 = getDecoP(dP, minLen * (i))
+          //   this.borderBuffer.circle(dP2.x, dP2.y, minLen)
+          // }
+        }
+        break;
+      }
+      case "scattered-dots": {
+        const margDist = sw * 7
+        const dp1 = getDecoP(p, margDist)
+        const dp2 = getDecoP(p1, margDist)
+        const dP = p5.Vector.lerp(dp1, dp2, -0.045)
+        this.borderBuffer.stroke(col)
+        this.borderBuffer.noFill(col)
+        this.borderBuffer.rectMode(CENTER)
+        const maxLen = sw * 3
+        const decorationRound = this.iterations % 2
+        const useBit = (this.useBitcrusher && this.useDelay) ? decorationRound === 1 : this.useBitcrusher
+        if (useBit) {
+
+          this.borderBuffer.push()
+          this.borderBuffer.translate(dP.x, dP.y)
+          this.borderBuffer.rotate(radians(45))
+          this.borderBuffer.square(0, 0, maxLen)
+          this.borderBuffer.pop()
+        }
+        const useDel = (this.useBitcrusher && this.useDelay) ? decorationRound === 0 : this.useDelay
+        if (useDel) {
+          const dP1 = getDecoP(dP, -maxLen)
+          const dP2 = getDecoP(dP, maxLen)
+          this.borderBuffer.line(dP1.x, dP1.y, dP2.x, dP2.y)
+        }
+        break;
+      }
+      case "straight": { 
+        const maxDeco = 10//14
+        const halfDeco = round(maxDeco/2)
+        this.borderBuffer.rectMode(CENTER)
+        this.borderBuffer.stroke(col)
+        this.borderBuffer.noFill()
+        
+        const decorationRound = this.iterations % maxDeco
+        const borderDist = sw * 14//30
+
+        const decoP = getDecoP(p, borderDist)
+        
+        const maxLen = sw*8//10
+        if (decorationRound === halfDeco && this.useBitcrusher) { 
+          const isOff = this.iterations % round(maxDeco * 2) === halfDeco
+          this.borderBuffer.square(decoP.x, decoP.y, maxLen)
+          this.borderBuffer.push()
+          this.borderBuffer.translate(decoP.x, decoP.y)
+          if(isOff) this.borderBuffer.rotate(radians(45))
+          this.borderBuffer.square(0, 0, maxLen / 2)
+          this.borderBuffer.pop()
+        }
+        if (decorationRound === 0 && this.useDelay) { 
+          
+
+          const isOff = this.iterations % round(maxDeco * 2) === 0
+          if (isOff) {
+            this.borderBuffer.circle(decoP.x, decoP.y, maxLen)
+            this.borderBuffer.circle(decoP.x, decoP.y, maxLen/4)
+          } else {
+            const decoP1 = getDecoP(decoP, -maxLen * 0.25)
+            this.borderBuffer.circle(decoP1.x, decoP1.y, maxLen)
+            const decoP2 = getDecoP(decoP, maxLen * 0.25)
+            this.borderBuffer.circle(decoP2.x, decoP2.y, maxLen)
+          }
+
+
+        }
+        break;
+      }
+      case "scattered": {
+        const maxDeco = 4
+        const halfDeco = round(maxDeco/2)
+        const decoP = p5.Vector.lerp(p, p1, -0.04)
+        const decorationRound = this.iterations % maxDeco
+        this.borderBuffer.rectMode(CENTER)
+
+        const maxLen = sw * 5
+        this.borderBuffer.stroke(col)
+        this.borderBuffer.noFill()
+        if (decorationRound === halfDeco && this.useBitcrusher) {
+          this.borderBuffer.push()
+          this.borderBuffer.translate(decoP.x, decoP.y)
+          this.borderBuffer.rotate(radians(45))
+          this.borderBuffer.square(0, 0, maxLen*0.8)
+          this.borderBuffer.pop()
+        }
+        if (decorationRound === 0 && this.useDelay) { 
+          this.borderBuffer.circle(decoP.x, decoP.y, maxLen)
+        }
+        break;
+      }
+    }
+
 
 
 
     //END
     const endLen = this.halfStop ? floor(len * 0.5) : len;
-    this.itterations++;
+    this.iterations++;
 
-    const completed = this.itterations > endLen
+    const completed = this.iterations > endLen
     if (completed) {
       this.complete = true
       console.log("complete")
