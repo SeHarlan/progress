@@ -60,69 +60,18 @@ const AlterIndexFunctions = {
 
 const getUseBitcrusher = () => random() < 0.33
 const getUseDelay = () => random() < 0.33
-//TODO clean this up, make it simple DUET
 
-//MISC
-// [x] make squares align to the largest dimension
-// [x] make website to showcase WIP
-// [x] menu with replay, next, save screenshot, 
-// [x] instructions "m" for menu toggle, "s" for screenshot, space for pause, "f" for fastforward
-// [x] rerender with same seed if screen size changes (if easy)
-// [x] fine tune stroke width & alpha
-// [x] warning if no Tone js
 
-//RYTHM
-// [x] examan existing rhythms
-// [x] make a few new rhythms (SQUARE WAVE)
-
-//SCALES 
-// [x] try out other scales
-// [x] assign black bg and white to a minor like mode
-// [x] assign white bg and black to a major like mode
-
-//COLOR
-// [x] try purposefull palettes for major/minor~
-// [] fine tune 1/1 color schemes
-
-//FACTORS
-// [x] confirm standard factor choices
-// [x] make sure they work with other factor functions (trim out fucntions with no variation)
-
-// MUSIC
-
-// [x] make sure root note is being hit on shortest
-// [x] low root note gets played on max dimension range so its more often, then diagonals just go lower 
 // [] fine tune octave range
-// [x] apply compression to music
-// [x] try reverb (maybe chorus/phase?)
-// [x] try square waves 
-// [] double tap to play/pause
-// [x] try bg styles that corrispond with effects like distortion and chorus
-// [] try rect colros determine octave starting point, 
-// [x] move effects bools to set up func
-// [x] make sure memory is being cleaned up on replay and new (audio degrades with effects after like 5 plays)
-// [x] try straight borders
-// confirm black and white 1/1 versions w/ _____ scales
 
+// [] fine tune 1/1 color schemes / confirm black and white or gray 1/1 versions w/ _____ scales
+// [] try removing eq and comp so that mobile doest glitch out/overload resources
+// [] try global time daw thing
 
 function setup() {
   createCanvas(windowWidth, windowHeight)
   colorMode(HSL)
   frameRate(musicFR)
-
- 
-
-  // if (isRecording) {
-  //   let stream = document.querySelector('canvas').captureStream(12); // argument is the desired fps
-  //   recorder = new MediaRecorder(stream);
-  //   recorder.ondataavailable = e => {
-  //     chunks.push(e.data);
-  //   };
-  //   recorder.onstop = () => {
-  //     const videoBlob = new Blob(chunks, { type: 'video/webm' });
-  //     downloadBlob(videoBlob, "video.webm");
-  //   }
-  // }
 
   focalBuff = createGraphics(width, height)
   focalBuff.colorMode(HSL)
@@ -139,7 +88,6 @@ function setup() {
 
   // drawBGTexture(textBuff, "bubbles")
   
-
   const s = random(1000)
   console.log("seed", s)
   randomSeed(s);
@@ -341,7 +289,6 @@ function handleRectSetUp() {
   halfStop = random() > 0.95
   console.log("halfStop", halfStop)
 
-
   //Focal settings
   focalAltFuncKey = random() < standardFunctionChance ? "standard" : random(Object.keys(AlterIndexFunctions));
   focalUseDelay = getUseDelay()
@@ -365,7 +312,7 @@ function handleRectSetUp() {
   focalIndexQuarterStart = round(random(1, 4))
   focalR1 = getNewRhythm()
   focalR2 = getNewRhythm()
-  focalRhythmReverse = random() > 0.66
+  focalRhythmReverse = random() < 0.25
  
 
   // Secondary / alt settings
@@ -498,6 +445,7 @@ function handlePlayToggle() {
 }
 
 function handlePlayInit() {
+  Tone.context.latencyHint = 'playback';
   Tone.start();
   playButton.className = "hidden"
   handleRectCreate()

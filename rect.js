@@ -97,22 +97,54 @@ class R3CT {
     const eq = new Tone.EQ3(-4, 0, -3)
     const eq2 = new Tone.EQ3(5, 1, 0)
 
-    this.fxChain = [
-      panner,
-      eq,
-      gain1,
-      compressor,
-      vibrato,
-      bitCrusher,
-      bdEq,
-      delay,
-      delEq,
-      compressor2,
-      eq2,
-      gain2,
-      limiter,
-      Tone.Destination
-    ]
+    const supportsWebAudio = !!window.AudioContext || !!window.webkitAudioContext;
+    console.log("🚀 ~ file: rect.js:101 ~ R3CT ~ supportsWebAudio:", supportsWebAudio)
+
+
+    const cpuCores = navigator.hardwareConcurrency || "unknown";
+    console.log("🚀 ~ file: rect.js:100 ~ R3CT ~ cpuCores:", cpuCores)
+    if (cpuCores <= 2) {
+      // Low-end device
+    }
+    const deviceMemory = navigator.deviceMemory || "unknown";
+    console.log("🚀 ~ file: rect.js:101 ~ R3CT ~ deviceMemory:", deviceMemory)
+    if (deviceMemory < 6) {
+      // Low memory device
+      this.fxChain = [
+        // panner,
+        // eq,
+        // gain1,
+        // compressor,
+        // vibrato,
+        // bitCrusher,
+        // bdEq,
+        // delay,
+        // delEq,
+        // compressor2,
+        // eq2,
+        // gain2,
+        // limiter,
+        Tone.Destination
+      ]
+    } else {
+      this.fxChain = [
+        panner,
+        eq,
+        gain1,
+        compressor,
+        vibrato,
+        bitCrusher,
+        bdEq,
+        delay,
+        delEq,
+        compressor2,
+        eq2,
+        gain2,
+        limiter,
+        Tone.Destination
+      ]
+    }
+
     this.synth.chain(...this.fxChain)
 
     const seg1 = []
@@ -229,9 +261,9 @@ class R3CT {
     const lModRange = 6
     const lMod = randomGaussian(0, lModRange)
     const l = lightness(this.color) + lMod
-    const minAlpha = 0.05//0
-    const maxAlpha = 0.66//0.75
-    const a = map(volume, 0,1, minAlpha, maxAlpha)//0,0.75
+    const minAlpha = 0
+    const maxAlpha = 0.7
+    const a = map(volume, 0,1, minAlpha, maxAlpha)
 
     const modRangeTotal = hModRange + sModRange + lModRange
     const modTotal = hMod + sMod + lMod
@@ -306,7 +338,7 @@ class R3CT {
         case "left": return createVector(point.x - pDist, point.y)
       }
     }
-    const decAl = map(a, minAlpha, maxAlpha, minAlpha, maxAlpha/2)
+    const decAl = map(a, minAlpha, maxAlpha, minAlpha, maxAlpha/3)//2
     const decoCol = color(h, s+modS, l+modL, decAl)
     switch (DECO_TYPE) {
       case "straight-dots": { 

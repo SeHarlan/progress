@@ -131,13 +131,13 @@ const RHYTHMS = {
     let note = getBaseNote(t, measureLength, reversed)
     const div = 2
     const onOff = floor(note / (measureLength / div)) % 2
-    return map(onOff, 0, 1, 0.9, 0.1, true)
+    return map(onOff, 0, 1, 0.8, 0.1, true)
   },
   square4: (t, measureLength, reversed) => {
     let note = getBaseNote(t, measureLength, reversed)
     const div = 4
     const onOff = floor(note / (measureLength / div)) % 2
-    return map(onOff, 0, 1, 0.9, 0.1, true)
+    return map(onOff, 0, 1, 0.8, 0.1, true)
   },
   fall: (t, measureLength, reversed) => {
     let note = getBaseNote(t, measureLength, reversed)
@@ -145,12 +145,12 @@ const RHYTHMS = {
   },
   alternate: (t, measureLength, reversed) => {
     const note = getBaseNote(t, measureLength, reversed) 
-    return note % 2 === 0 ? 0.9 : 0.25
+    return note % 2 === 0 ? 0.75 : 0.1
   },
   staggered: (t, measureLength, reversed) => { 
     const note = getBaseNote(t, measureLength, reversed) 
-    if (note === 0) return 1
-    if (getMod(note, measureLength/2)) return 0.8
+    if (note === 0) return 0.9
+    if (getMod(note, measureLength/2)) return 0.7
     if (getMod(note, measureLength/4)) return 0.4
     return 0.1
   },
@@ -182,5 +182,12 @@ const RHYTHMS = {
       case 15: return 0.4
       default: return 0.1
     }
-  }
+  },
+  space: (t, measureLength, reversed) => { 
+    const note = getBaseNote(t, measureLength, reversed)
+    if (note === 0) return 1
+    if (getMod(note, measureLength / 2)) return 0.2
+    if (getMod(note, measureLength / 4)) return 0.1
+    return 0.05
+  },
 }
