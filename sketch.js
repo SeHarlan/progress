@@ -19,6 +19,8 @@ let decoType
 let focalUseDelay, secUseDelay
 let focalUseBitcrusher, secUseBitcrusher
 
+let focalDuetSynth, secDuetSynth;
+
 let halfStop;
 let scale, rootNote, upNote
 
@@ -60,13 +62,14 @@ const AlterIndexFunctions = {
 
 const getUseBitcrusher = () => random() < 0.33
 const getUseDelay = () => random() < 0.33
+const getNewRhythm = () => "stomp"//random(Object.keys(RHYTHMS))
 
 
-// [] fine tune octave range
-
+// [] fine tune octave range (alt colors makes higher octaves?)
 // [] fine tune 1/1 color schemes / confirm black and white or gray 1/1 versions w/ _____ scales
-// [] try removing eq and comp so that mobile doest glitch out/overload resources
-// [] try global time daw thing
+// [] makes sure rythms align probably need to sort out the different rotations, (then try reverse lead rythm again)
+// [] try and fix iphone audio overload, try feeding the synth into the rect so its only made once (dont dispose in this case)
+// [] consider buffering, (making all the notes and lines, then playing them back with the transport
 
 function setup() {
   createCanvas(windowWidth, windowHeight)
@@ -92,6 +95,9 @@ function setup() {
   console.log("seed", s)
   randomSeed(s);
   noiseSeed(s);
+
+  focalDuetSynth = new DuetSynth("sine")
+  secDuetSynth = new DuetSynth("triangle")
 
   handleRectSetUp()
   //set up happens on play so mobile devices can play audio
@@ -136,11 +142,19 @@ async function playMusic() {
     }
   }
 
-  const secNoteProps = secRect.drawLine()
-  const focalNoteProps = focalRect.drawLine()
 
-  focalRect.playNote(...focalNoteProps)
-  secRect.playNote(...secNoteProps)
+  const secFunc = secRect.drawLine()
+  const focalFunc = focalRect.drawLine()
+
+  const time = undefined
+  // Tone.Transport.scheduleOnce(time => {
+    secFunc.playNote(time)
+    focalFunc.playNote(time)
+    secFunc.drawLine()
+    focalFunc.drawLine()
+    secFunc.drawBorder()
+    focalFunc.drawBorder()
+
 
   background(bgColor)
   drawingContext.shadowColor = color(0,0,0,0)
@@ -312,7 +326,7 @@ function handleRectSetUp() {
   focalIndexQuarterStart = round(random(1, 4))
   focalR1 = getNewRhythm()
   focalR2 = getNewRhythm()
-  focalRhythmReverse = random() < 0.25
+  focalRhythmReverse = false//random() < 0.25
  
 
   // Secondary / alt settings
@@ -337,7 +351,6 @@ function handleRectSetUp() {
   secR1 = getNewRhythm()
   secR2 = getNewRhythm()
 }
-const getNewRhythm = () => random(Object.keys(RHYTHMS))
 
 const handleRectCreate = () => {
   const isHorizontal = width > height
@@ -372,7 +385,8 @@ const handleRectCreate = () => {
     R2: focalR2,
     rhythmReverse: focalRhythmReverse,
     useBitcrusher: focalUseBitcrusher,
-    useDelay: focalUseDelay
+    useDelay: focalUseDelay,
+    synth: focalDuetSynth
   })
 
 
@@ -404,7 +418,8 @@ const handleRectCreate = () => {
       R2: secR2,
       rhythmReverse: false,
       useBitcrusher: secUseBitcrusher,
-      useDelay: secUseDelay
+      useDelay: secUseDelay,
+      synth: secDuetSynth
     }
   )
 }

@@ -156,6 +156,7 @@ const RHYTHMS = {
   },
   stomp: (t, measureLength, reversed) => { 
     const note = getBaseNote(t, measureLength, reversed) 
+    console.log("🚀 ~ file: music.js:159 ~ note:", note)
     switch (note) { 
       case 0: return 1
       case 3: return 0.75
@@ -190,4 +191,95 @@ const RHYTHMS = {
     if (getMod(note, measureLength / 4)) return 0.1
     return 0.05
   },
+}
+
+class DuetSynth {
+  constructor(waveType) {
+    this.waveType = waveType
+
+    this.synth = new Tone.Synth({
+      oscillator: {
+        type: this.waveType
+      },
+    })
+
+    const gain1 = new Tone.Gain(1.5)
+    this.delay = new Tone.PingPongDelay("4n", 0.2)
+    this.delay.wet.value = 0
+    const delEq = new Tone.EQ3(-5, 0, 2)
+    this.delay.connect(delEq)
+   
+
+    const compressor = new Tone.Compressor({
+      ratio: 5,
+      threshold: -30,
+      release: 0.25,
+      attack: 0.003,
+      knee: 30
+    })
+    const compressor2 = new Tone.Compressor({
+      ratio: 20,
+      threshold: -5,
+      release: 0.25,
+      attack: 0.003,
+      knee: 30
+    })
+
+    this.bitCrusher = new Tone.BitCrusher(4)
+    this.bitCrusher.wet.value = 0
+    const bdEq = new Tone.EQ3(0, -2, -8)
+    this.bitCrusher.connect(bdEq)
+
+    
+
+    const vibrato = new Tone.Vibrato(5, 0.1)
+    // vibrato.wet.value = 0.25
+
+    const panner = new Tone.Panner(waveType === "triangle" ? 0.75 : -0.75)
+    const gain2 = new Tone.Gain(1.5)
+    const limiter = new Tone.Limiter(-1)
+    const eq = new Tone.EQ3(-4, 0, -3)
+    const eq2 = new Tone.EQ3(5, 1, 0)
+
+    const cpuCores = navigator.hardwareConcurrency || "unknown";
+    const deviceMemory = navigator.deviceMemory || "unknown";
+
+    const useTrimFX = cpuCores <= 4 || deviceMemory < 4
+    if (useTrimFX) {
+      // Low memory device
+      this.fxChain = [
+        eq,
+        compressor,
+        gain2,
+        limiter,
+        Tone.Destination
+      ]
+    } else {
+      this.fxChain = [
+        panner,
+        eq,
+        gain1,
+        compressor,
+        vibrato,
+        this.bitCrusher,
+        bdEq,
+        this.delay,
+        delEq,
+        compressor2,
+        eq2,
+        gain2,
+        limiter,
+        Tone.Destination
+      ]
+    }
+
+    this.synth.chain(...this.fxChain)
+
+  }
+  setBitcrusher(useIt) { 
+    this.bitCrusher.wet.value = useIt ? 0.25 : 0
+  }
+  setDelay(useIt) { 
+    this.delay.wet.value = useIt ? 0.25 : 0
+  }
 }

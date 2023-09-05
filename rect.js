@@ -9,10 +9,17 @@ class R3CT {
       rhythmReverse = random([true, false]),
       useDelay = random() < 0.33,
       useBitcrusher = random() < 0.33,
+      synth
     }
   ) {
+    
     this.buffer = buffer
+    this.buffer.strokeCap(SQUARE)
+
     this.borderBuffer = borderBuffer
+    this.borderBuffer.rectMode(CENTER)
+    this.borderBuffer.strokeCap(PROJECT)
+
     this.reverse = reverse
     this.rhythmReverse = rhythmReverse
 
@@ -22,7 +29,14 @@ class R3CT {
     this.borderPoints = [];
     this.iterations = 0;
 
-    this.waveType = waveType
+    synth.setBitcrusher(useBitcrusher)
+    synth.setDelay(useDelay)
+    this.synth = synth.synth
+    this.waveType = synth.waveType
+
+    this.useBitcrusher = useBitcrusher
+    this.useDelay = useDelay
+
 
 
     //diagnal length
@@ -48,104 +62,83 @@ class R3CT {
     this.startingNote = startingNote
     this.scale = scale
 
-    
-    this.synth = new Tone.Synth({
-      oscillator: {
-        type: this.waveType
-      }
-    })
-
-    this.useBitcrusher = useBitcrusher
-    this.useDelay = useDelay
-
     this.decoType = decoType
-
-
-    const gain1 = new Tone.Gain(1.5)
-    const delay = new Tone.PingPongDelay("4n", 0.2)
-    const delEq = new Tone.EQ3(-5, 0, 2)
-    delay.connect(delEq)
-    delay.wet.value = this.useDelay ? 0.25 : 0
-
-    const compressor = new Tone.Compressor({
-      ratio: 5,
-      threshold: -30,
-      release: 0.25,
-      attack: 0.003,
-      knee: 30
-    })
-    const compressor2 = new Tone.Compressor({
-      ratio: 20,
-      threshold: -5,
-      release: 0.25,
-      attack: 0.003,
-      knee: 30
-    })
-
-    const bitCrusher = new Tone.BitCrusher(4)
-    const bdEq = new Tone.EQ3(0, -2, -8)
-    bitCrusher.connect(bdEq)
     
-    bitCrusher.wet.value = this.useBitcrusher ? 0.25 : 0
+    // this.synth = new Tone.Synth({
+    //   oscillator: {
+    //     type: this.waveType
+    //   },
+    // })
 
-    const vibrato = new Tone.Vibrato(5, 0.1)
-    // vibrato.wet.value = 0.25
+
+    // const gain1 = new Tone.Gain(1.5)
+    // const delay = new Tone.PingPongDelay("4n", 0.2)
+    // const delEq = new Tone.EQ3(-5, 0, 2)
+    // delay.connect(delEq)
+    // delay.wet.value = this.useDelay ? 0.25 : 0
+
+    // const compressor = new Tone.Compressor({
+    //   ratio: 5,
+    //   threshold: -30,
+    //   release: 0.25,
+    //   attack: 0.003,
+    //   knee: 30
+    // })
+    // const compressor2 = new Tone.Compressor({
+    //   ratio: 20,
+    //   threshold: -5,
+    //   release: 0.25,
+    //   attack: 0.003,
+    //   knee: 30
+    // })
+
+    // const bitCrusher = new Tone.BitCrusher(4)
+    // const bdEq = new Tone.EQ3(0, -2, -8)
+    // bitCrusher.connect(bdEq)
     
-    const panner = new Tone.Panner(waveType === "triangle" ? 0.75 : -0.75)
-    const gain2 = new Tone.Gain(1.5)
-    const limiter = new Tone.Limiter(-1)
-    const eq = new Tone.EQ3(-4, 0, -3)
-    const eq2 = new Tone.EQ3(5, 1, 0)
+    // bitCrusher.wet.value = this.useBitcrusher ? 0.25 : 0
 
-    const supportsWebAudio = !!window.AudioContext || !!window.webkitAudioContext;
-    console.log("🚀 ~ file: rect.js:101 ~ R3CT ~ supportsWebAudio:", supportsWebAudio)
+    // const vibrato = new Tone.Vibrato(5, 0.1)
+    // // vibrato.wet.value = 0.25
+    
+    // const panner = new Tone.Panner(waveType === "triangle" ? 0.75 : -0.75)
+    // const gain2 = new Tone.Gain(1.5)
+    // const limiter = new Tone.Limiter(-1)
+    // const eq = new Tone.EQ3(-4, 0, -3)
+    // const eq2 = new Tone.EQ3(5, 1, 0)
 
+    // const cpuCores = navigator.hardwareConcurrency || "unknown";
+    // const deviceMemory = navigator.deviceMemory || "unknown";
 
-    const cpuCores = navigator.hardwareConcurrency || "unknown";
-    console.log("🚀 ~ file: rect.js:100 ~ R3CT ~ cpuCores:", cpuCores)
-    if (cpuCores <= 2) {
-      // Low-end device
-    }
-    const deviceMemory = navigator.deviceMemory || "unknown";
-    console.log("🚀 ~ file: rect.js:101 ~ R3CT ~ deviceMemory:", deviceMemory)
-    if (deviceMemory < 6) {
-      // Low memory device
-      this.fxChain = [
-        // panner,
-        // eq,
-        // gain1,
-        // compressor,
-        // vibrato,
-        // bitCrusher,
-        // bdEq,
-        // delay,
-        // delEq,
-        // compressor2,
-        // eq2,
-        // gain2,
-        // limiter,
-        Tone.Destination
-      ]
-    } else {
-      this.fxChain = [
-        panner,
-        eq,
-        gain1,
-        compressor,
-        vibrato,
-        bitCrusher,
-        bdEq,
-        delay,
-        delEq,
-        compressor2,
-        eq2,
-        gain2,
-        limiter,
-        Tone.Destination
-      ]
-    }
+    // if (cpuCores <= 4 || deviceMemory < 4) {
+    //   // Low memory device
+    //   this.fxChain = [
+    //     eq,
+    //     compressor,
+    //     gain2,
+    //     limiter,
+    //     Tone.Destination
+    //   ]
+    // } else {
+    //   this.fxChain = [
+    //     panner,
+    //     eq,
+    //     gain1,
+    //     compressor,
+    //     vibrato,
+    //     bitCrusher,
+    //     bdEq,
+    //     delay,
+    //     delEq,
+    //     compressor2,
+    //     eq2,
+    //     gain2,
+    //     limiter,
+    //     Tone.Destination
+    //   ]
+    // }
 
-    this.synth.chain(...this.fxChain)
+    // this.synth.chain(...this.fxChain)
 
     const seg1 = []
     const seg2 = []
@@ -201,11 +194,13 @@ class R3CT {
   }
 
   replay() {
-    this.complete = false;
     this.iterations = 0;
+    this.complete = false;
   }
 
   dispose() {
+    return
+    this.iterations = 0;
     console.log("Disposed")
     //skip destination as an fx
     for (let i = this.fxChain.length - 2; i >= 0; i--) { 
@@ -228,7 +223,7 @@ class R3CT {
     const len = this.borderPoints.length;
 
 
-    let index = (this.startIndex + this.iterations) % len;
+    let index = ((this.startIndex + this.iterations) % len);
 
     if (this.reverse) index = len - index - 1
 
@@ -246,8 +241,6 @@ class R3CT {
     const step = min(this.Ystep, this.Xstep)
 
     const sw = max(step * 0.5, 0.5)//0.6
-
-    this.buffer.strokeCap(SQUARE)
 
     const p1Index = floor(this.alterFunction(index) * this.factor) % len
     const p1 = debug ? createVector(width / 2, height / 2) : this.borderPoints[p1Index]
@@ -322,12 +315,16 @@ class R3CT {
         ? -30
         : 30
       : 0
-    const col = color(h, s+modS, l+modL, a)
-    this.buffer.strokeWeight(sw)
-    this.buffer.stroke(col)
-    this.buffer.line(sinEdge1.x, sinEdge1.y, sinEdge2.x, sinEdge2.y)
+    const col = color(h, s + modS, l + modL, a)
+    
+    const drawLine = () => {
+      this.buffer.strokeWeight(sw)
+      this.buffer.stroke(col)
+      this.buffer.line(sinEdge1.x, sinEdge1.y, sinEdge2.x, sinEdge2.y)
+    }
 
 
+    let drawBorder = () => { };
     const DECO_TYPE = this.decoType//"scattered-dots"//"straight-dots"//"scattered"//"straight
 
     const getDecoP = (point, pDist) => {
@@ -346,29 +343,33 @@ class R3CT {
         const dP = getDecoP(p, borderDist)
         
 
-        this.borderBuffer.stroke(decoCol)
-        this.borderBuffer.fill(decoCol)
-        this.borderBuffer.rectMode(CENTER)
-        this.borderBuffer.strokeCap(PROJECT)
+        
+        
         const minLen = sw*2
         const decorationRound = this.iterations % 2
         const useBit = (this.useBitcrusher && this.useDelay) ? decorationRound === 1 : this.useBitcrusher
-
+        
         const pDist = minLen + minLen * (maxStep - scaleStep)
         const dP2 = getDecoP(dP, pDist)
         if (useBit) {
-          this.borderBuffer.strokeWeight(sw)
-          this.borderBuffer.line(dP.x, dP.y, dP2.x, dP2.y)
+          drawBorder = () => {
+            this.borderBuffer.stroke(decoCol)
+            this.borderBuffer.strokeWeight(sw)
+            this.borderBuffer.line(dP.x, dP.y, dP2.x, dP2.y)
+          }
         }
         const useDel = (this.useBitcrusher && this.useDelay) ? decorationRound === 0 : this.useDelay
         if (useDel) {
-          this.borderBuffer.noStroke()
-          this.borderBuffer.circle(dP.x, dP.y, sw*1.75)
-          this.borderBuffer.circle(dP2.x, dP2.y, sw*1.75)
-          // for (let i = 0; i <= maxStep - scaleStep + 1; i++) { 
-          //   const dP2 = getDecoP(dP, minLen * (i))
-          //   this.borderBuffer.circle(dP2.x, dP2.y, minLen)
-          // }
+          drawBorder = () => {
+            this.borderBuffer.fill(decoCol)
+            this.borderBuffer.noStroke()
+            this.borderBuffer.circle(dP.x, dP.y, sw*1.75)
+            this.borderBuffer.circle(dP2.x, dP2.y, sw*1.75)
+            // for (let i = 0; i <= maxStep - scaleStep + 1; i++) { 
+            //   const dP2 = getDecoP(dP, minLen * (i))
+            //   this.borderBuffer.circle(dP2.x, dP2.y, minLen)
+            // }
+          }
         }
         break;
       }
@@ -475,11 +476,18 @@ class R3CT {
       this.complete = true
       console.log("complete")
     }
-    return [volume, note, volMod]
-  }
-  playNote(volume, note, volMod = 1) {
-    if (!volume) return
-    this.synth.triggerAttackRelease(note, "8n", undefined, volume * volMod);
+
+    const playNote = (t) => {
+      if (!volume) return
+      this.synth.triggerAttackRelease(note, "32n", t, volume * volMod);
+    } 
+
+    return {
+      playNote,
+      drawLine,
+      drawBorder,
+    }
+    // return [volume, note, volMod]
   }
 }
 
