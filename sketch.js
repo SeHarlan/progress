@@ -1,685 +1,504 @@
-const debug = false;
-const musicDebug = false
+let blockBrushes = []
+let lifes = []
+let flowField;
+let blockSize;
+let blockSizes = [50, 100, 200]
+let speed = 5
+let maxBlockLifeSpan = 500
 
-const musicFR = 10
+let palette
 
-const useWaveLineLength = "wave"
 
-let withMusic = true
+//TODO
+// block types
+//  solid b&w
+//  random from palette
+// strips
+// divided in triangles
+    
 
-let bgColor
-let focalRect, secRect;
-let focalColor, secColor, focalFactor, secFactor;
-let focalAltFuncKey, secAltFuncKey;
-let focalRotateBy, secRotateBy;
-let focalIndexQuarterStart, secIndexQuarterStart;
-let focalR1, focalR2, secR1, secR2;
-let focalRhythmReverse
-let decoType
-let focalUseDelay, secUseDelay
-let focalUseBitcrusher, secUseBitcrusher
-
-let focalDuetSynth, secDuetSynth;
-
-let halfStop;
-let scale, rootNote, upNote
-
-let focalBuff, secBuff;
-let focalBorderBuff, secBorderBuff;
-let textBuff
-
-let margin
-
-let Bufs = []
-let Rects = []
-
-let playButton
-let playing = false
-
-let menuContainer, closeButton, fastForwardButton, pauseButton, screenshotButton;
-let newButton, replayButton
-
-const isRecording = false
-let recorder;
-let chunks = [];
-
-const standardFunctionChance = 0.5
-// let audioContext;
-// let audioRecorder = new Tone.Recorder();
-// Tone.Master.connect(audioRecorder);
-
-let stream;
-//ffmpeg -i video.webm -i audio.wav -c:v libx264 -c:a aac output.mp4
-
-const AlterIndexFunctions = {
-  "standard": (i) => i,
-  "cos": (i) => abs(cos(radians(i))),
-  "sin": (i) => abs(sin(radians(i))),
-  "tan": (i) => abs(tan(radians(i))),
-  "sq": (i) => sq(i),
-  "sqrt": (i) => sqrt(i)
+function getPalette() {
+  return random([
+    [color(279, 18, 84), color(336, 26, 65), color(337, 39, 45), color(342, 40, 48), color(158, 31, 7)],
+    [color(30, 11, 4), color(199, 27, 18), color(31, 33, 88), color(32, 33, 67), color(33, 20, 31)],
+    [color(254, 31, 40), color(311, 18, 83), color(189, 100, 97), color(182, 42, 72), color(225, 54, 14)],
+    [color(85, 61, 93), color(67, 8, 80), color(261, 9, 69), color(285, 92, 9), color(268,44,35)],
+    [color(40, 23, 3), color(227, 10, 28), color(350, 49, 29), color(350, 51, 38), color(60, 100, 99)],
+    [color(45, 4, 20), color(62, 25, 22), color(36, 59, 31), color(32, 75, 49), color(34, 100, 61)],
+    [color(37, 82, 61), color(352, 60, 55), color(188, 100, 27), color(207, 49, 37), color(200, 100, 18)],
+    // [color(26,28,67), ]
+  ])
 }
 
-const getUseBitcrusher = () => random() < 0.33
-const getUseDelay = () => random() < 0.33
-const getNewRhythm = () => "stomp"//random(Object.keys(RHYTHMS))
+const numBlocks = {
+  50: 8,
+  100: 5,
+  200: 3
+}
 
+const floorToBucket = (num, bucketSize) => { 
+  return bucketSize * floor(num / bucketSize)
+}
 
-// [] fine tune octave range (alt colors makes higher octaves?)
-// [] fine tune 1/1 color schemes / confirm black and white or gray 1/1 versions w/ _____ scales
-// [] makes sure rythms align probably need to sort out the different rotations, (then try reverse lead rythm again)
-// [] try and fix iphone audio overload, try feeding the synth into the rect so its only made once (dont dispose in this case)
-// [] consider buffering, (making all the notes and lines, then playing them back with the transport
+function seedRandom(s) {
+  let x = Math.sin(s) * 10000;
+  return x - Math.floor(x);
+}
 
 function setup() {
-  createCanvas(windowWidth, windowHeight)
   colorMode(HSL)
-  frameRate(musicFR)
+  blockSize = random(blockSizes)
+  const dubBS = blockSize*2
+  const cw = floorToBucket(windowWidth*0.95, dubBS)
+  const ch = floorToBucket(windowHeight*0.95, dubBS)
 
-  focalBuff = createGraphics(width, height)
-  focalBuff.colorMode(HSL)
-  secBuff = createGraphics(width, height)
-  secBuff.colorMode(HSL)
-
-  focalBorderBuff = createGraphics(width, height)
-  focalBorderBuff.colorMode(HSL)
-  secBorderBuff = createGraphics(width, height)
-  secBorderBuff.colorMode(HSL)
-
-  textBuff = createGraphics(width, height)
-  textBuff.colorMode(HSL)
-
-  // drawBGTexture(textBuff, "bubbles")
+  createCanvas(cw, ch);
+  frameRate(60)
   
-  const s = random(1000)
-  console.log("seed", s)
-  randomSeed(s);
-  noiseSeed(s);
-
-  focalDuetSynth = new DuetSynth("sine")
-  secDuetSynth = new DuetSynth("triangle")
-
-  handleRectSetUp()
-  //set up happens on play so mobile devices can play audio
-
-  //UI
-  playButton = document.getElementById("play-button")
-  playButton.onclick = handlePlayInit
-
-  menuContainer = document.getElementById("instructionContainer")
-
-  closeButton = document.getElementById("closeButton")
-  closeButton.onclick = handleCloseMenu
-
-  fastForwardButton = document.getElementById("fastForwardButton")
-  fastForwardButton.onclick = handleFastForward
-  pauseButton = document.getElementById("pauseButton")
-  pauseButton.onclick = handlePlayToggle
-  screenshotButton = document.getElementById("screenshotButton")
-  screenshotButton.onclick = handleSaveScreenshot
-
-  replayButton = document.getElementById("replayButton")
-  replayButton.onclick = handleReplay
-  newButton = document.getElementById("newButton")
-  newButton.onclick = handleNew
-
-  window.addEventListener("resize", debounce(handleResize, 300))
+  initBlocks(blockSize)
 }
+
+
+//based on dif between white and black blocks determines note (adding grey means weighted to lower notes)
+//base this on 1/4th?
+//hieght is volume, width is pan
+//moving mean playing?
+//make noise for internal shuffling loop so its the same motif
+
 
 function draw() {
-  if (playing) playMusic()
-}
 
-async function playMusic() {
-  if (focalRect.complete && secRect.complete) {
-    noLoop()
-    console.log("All Complete")
+  blockBrushes.forEach(block => {
+    block.draw();
+    block.move(flowField);
+    block.shiftPattern();
+    if (frameCount % 200 === 0) {
+      if (!block.inSpace || block.lifeSpan < 0) block.reset()
+      block.flowField.shiftField()
+    }
+  })
 
-    handleOpenMenu()
-
-    if (isRecording) {
-      setTimeout(stopRecording, 1000)
+  for (let i = lifes.length - 1; i >= 0; i--) { 
+    const life = lifes[i]
+    life.checkDeath()
+    if (life.isDead) {
+      lifes.splice(i, 1)
+      continue;
+    }
+    life.show()
+    life.move()
+    if (random() < 0.09) {
+      life.birth()
     }
   }
 
-
-  const secFunc = secRect.drawLine()
-  const focalFunc = focalRect.drawLine()
-
-  const time = undefined
-  // Tone.Transport.scheduleOnce(time => {
-    secFunc.playNote(time)
-    focalFunc.playNote(time)
-    secFunc.drawLine()
-    focalFunc.drawLine()
-    secFunc.drawBorder()
-    focalFunc.drawBorder()
-
-
-  background(bgColor)
-  drawingContext.shadowColor = color(0,0,0,0)
-  image(textBuff, 0, 0)
-  image(focalBorderBuff, 0, 0)
-  image(secBorderBuff, 0, 0)
-
-  //canvas shadow
-  const darkBG = lightness(bgColor) < 20
-  const shadowL = darkBG ? 100 : 0
-  const shadowOffset = min(width, height) * 0.0025
-  drawingContext.shadowColor = color(hue(bgColor), saturation(bgColor), shadowL, 0.3)
-  drawingContext.shadowBlur = shadowOffset*1.5
-  drawingContext.shadowOffsetX = 0
-  drawingContext.shadowOffsetY = shadowOffset * (darkBG ? -1 : 1)
-
- 
-  image(secBuff, 0, 0)
-  image(focalBuff, 0, 0)
-
-  if (debug) {
-    stroke(0, 0, 100)
-    strokeWeight(2)
-    const min = Math.min(width, height)
-    const margin = min * 0.1;
-
-    line(margin, margin, width - margin, margin)
-    line(width - margin, margin, width - margin, height - margin)
-    line(width - margin, height - margin, margin, height - margin)
-    line(margin, height - margin, margin, margin)
+  if (frameCount % 300 === 0 && random() < 0.5) {
+    initLifes()
   }
-
+  drawBorder()
 }
 
 function keyPressed() {
-  if (key == " ") {
-    if (playButton.className !== "hidden") handlePlayInit()
-    else handlePlayToggle()
+  if (key == "n") {randomizePattern
+    initBlocks()
   }
-  if (playButton.className !== "hidden") return
-  if (key == "m") {
-    handleMenuToggle()
-  }
-  if (key == 's') {
-    handleSaveScreenshot()
-  }
-  if (key == 'f') {
-    handleFastForward()
-  }
-  if (key == "r") {
-    handleReplay()
-  }
-  if (key == "n") {
-    handleNew()
-  }
-  return false
-}
-
-function handleRectSetUp() {
-  scale = random(Object.keys(ScaleFunctionsMap))
-  // scale = Object.keys(ScaleFunctionsMap).sort(() => random() - 0.35)[0]
-  console.log("scale", scale)
-
-  const pallette = {
-    major: {
-      bgH: () => random(360),
-      bgS: () => 50,
-      bgL: () => random(90, 100),
-      rectS: () => 50,
-      rectL: () => random(60,80),
-    },
-    minor: {
-      bgH: () => random(360),
-      bgS: () => 25,
-      bgL: () => random(5, 15),
-      rectS: () => 80,
-      rectL: () => random(55, 75),
-    },
-    pentatonic: {
-      bgH: () => random(360),//random() > 0.33 ? random(330, 360 + 30) % 360 : random(180, 240),
-      bgS: () => 20,
-      bgL: () => random(20, 50),
-      rectS: () => 65,
-      rectL: () => random(50, 80),
-    },
-    // lydian: {
-    //   bgH: () => random(360),
-    //   bgS: () => 5,
-    //   bgL: () => 95,
-    //   rectS: () => 1,
-    //   rectL: () => 33,
-    // },
-    lydian: {
-      bgH: () => random(360),
-      bgS: () => 1,
-      bgL: () => 99,
-      rectS: () => 1,
-      rectL: () => 5,
-    },
-    mixolydian: {
-      bgH: () => random(360),
-      bgS: () => 1,
-      bgL: () => 99,
-      rectS: () => 1,
-      rectL: () => 5,
-    },
-    // dorian: {
-    //   bgH: () => random(360),
-    //   bgS: () => 5,
-    //   bgL: () => 5,
-    //   rectS: () => 1,
-    //   rectL: () => 66,
-    // },
-    dorian: {
-      bgH: () => random(360),
-      bgS: () => 1,
-      bgL: () => 1,
-      rectS: () => 1,
-      rectL: () => 95,
-    },
-    phrygian: {
-      bgH: () => random(360),
-      bgS: () => 1,
-      bgL: () => 1,
-      rectS: () => 1,
-      rectL: () => 95,
-    },
-  }
-
-  const bgH = pallette[scale].bgH()
-  const bgS = pallette[scale].bgS()
-  const bgL = pallette[scale].bgL()
-  bgColor = color(bgH, bgS, bgL)
-  debug && console.log("Bg Hue", bgH)
-  background(bgColor);
-  image(textBuff, 0, 0)
-
-  decoType = "straight-dots"//random(["scattered-dots", "straight"]) //"straight-dots", "scattered"
-
-  const rootNotes = Object.keys(NoteHertz)
-  const noteIndex = round(map(bgH, 0, 360, 0, rootNotes.length - 1))
-  rootNote = rootNotes[noteIndex]
-
-  console.log("rootNote", rootNote)
-
-  halfStop = random() > 0.95
-  console.log("halfStop", halfStop)
-
-  //Focal settings
-  focalAltFuncKey = random() < standardFunctionChance ? "standard" : random(Object.keys(AlterIndexFunctions));
-  focalUseDelay = getUseDelay()
-  focalUseBitcrusher = getUseBitcrusher()
-
-  console.log("Focal Alter Func:", focalAltFuncKey)
-
-  const hOffsetOptions = [0, 180]
-
-  const hOff = random(hOffsetOptions)
-  const fH = (bgH + hOff) % 360;
-  const fS = pallette[scale].rectS();
-  const fL = pallette[scale].rectL();
-  const fA = 0.75;
-  focalColor = color(fH, fS, fL, fA)
-
-  focalFactor = getFactorOption(focalAltFuncKey)
-  console.log("focalFactor", focalFactor)
-
-  focalRotateBy = random(5)
-  focalIndexQuarterStart = round(random(1, 4))
-  focalR1 = getNewRhythm()
-  focalR2 = getNewRhythm()
-  focalRhythmReverse = false//random() < 0.25
- 
-
-  // Secondary / alt settings
-  secAltFuncKey = random() < standardFunctionChance ? "standard" : random(Object.keys(AlterIndexFunctions));
-  secUseDelay = getUseDelay()
-  secUseBitcrusher = getUseBitcrusher()
-
-  console.log("Secondary Alter Func:", secAltFuncKey)
-  const secHOff = random(hOffsetOptions)
-  const secH = (bgH + secHOff) % 360;
-  const secS = pallette[scale].rectS();
-  const secL = pallette[scale].rectL();
-  const secA = 0.75
-  secColor = color(secH, secS, secL, secA)
-
-
-  secFactor = getFactorOption(secAltFuncKey)
-  console.log("secFactor", secFactor)
-
-  secRotateBy = random(5)
-  secIndexQuarterStart = round(random(1, 4))
-  secR1 = getNewRhythm()
-  secR2 = getNewRhythm()
-}
-
-const handleRectCreate = () => {
-  const isHorizontal = width > height
-
-  const minDimension = min(width, height)
-  margin = minDimension * 0.1;
-
-
-  const focX2 = isHorizontal ? width / 2 - margin / 2 : width - margin
-  const focY2 = isHorizontal ? height - margin : height / 2 - margin / 2
-
-  focalRect = new R3CT({
-    x1: roundLastDigit(margin),
-    y1: roundLastDigit(margin),
-    x2: roundLastDigit(focX2),
-    y2: roundLastDigit(focY2),
-    measure: 32,
-    factor: focalFactor,
-    alterFunction: AlterIndexFunctions[focalAltFuncKey],
-    color: focalColor,
-    halfStop,
-    buffer: focalBuff,
-    borderBuffer: focalBorderBuff,
-    rotateBy: focalRotateBy,
-    indexQuarterStart: focalIndexQuarterStart,
-    decoType
-  }, {
-    startingNote: NoteHertz[rootNote][4],
-    scale: scale,
-    waveType: "sine",
-    R1: focalR1,
-    R2: focalR2,
-    rhythmReverse: focalRhythmReverse,
-    useBitcrusher: focalUseBitcrusher,
-    useDelay: focalUseDelay,
-    synth: focalDuetSynth
-  })
-
-
-  const secX1 = isHorizontal ? width / 2 + margin / 2 : margin
-  const secY1 = isHorizontal ? margin : height / 2 + margin / 2
-
-  secRect = new R3CT({
-    x1: roundLastDigit(secX1),
-    y1: roundLastDigit(secY1),
-    x2: roundLastDigit(width - margin),
-    y2: roundLastDigit(height - margin),
-    measure: 32,
-    factor: secFactor,
-    alterFunction: AlterIndexFunctions[secAltFuncKey],
-    color: secColor,
-    halfStop,
-    buffer: secBuff,
-    borderBuffer: secBorderBuff,
-    rotateBy: secRotateBy,
-    indexQuarterStart: secIndexQuarterStart,
-    reverse: true,
-    decoType
-  },
-    {
-      startingNote: NoteHertz[rootNote][2],
-      scale: scale,
-      waveType: "triangle",
-      R1: secR1,
-      R2: secR2,
-      rhythmReverse: false,
-      useBitcrusher: secUseBitcrusher,
-      useDelay: secUseDelay,
-      synth: secDuetSynth
-    }
-  )
-}
-
-function handleSaveScreenshot() {
-  save("DUET-still.png");
-}
-
-function handleNormalSpeed() { 
-  withMusic = true
-  frameRate(musicFR)
-  fastForwardButton.textContent = "Fast Forward"
-}
-
-function handleFastForward() { 
-  if (withMusic) {
-    withMusic = false
-    frameRate(60)
-    fastForwardButton.textContent = "Normal Speed"
-  } else {
-    handleNormalSpeed()
-  }
-  handlePlay()
-}
-
-function handlePlay() { 
-  loop()
-  playing = true
-  pauseButton.textContent = "Pause"
-}
-function handlePause() {
-  playing = false
-  pauseButton.textContent = "Play"
-}
-function handlePlayToggle() { 
-  if (playing) handlePause()
-  else handlePlay()
-}
-
-function handlePlayInit() {
-  Tone.context.latencyHint = 'playback';
-  Tone.start();
-  playButton.className = "hidden"
-  handleRectCreate()
-  handlePlay()
-
-  // if (isRecording) {
-  //   getAudioVideoStream()
-  //   // recorder.start();
-  //   // audioRecorder.start();
-  // }
-}
-
-function handleMenuToggle() { 
-  if(menuContainer.className === "in") handleCloseMenu()
-  else handleOpenMenu()
-}
-
-function handleOpenMenu() { 
-  if (playButton.className !== "hidden") return
-  menuContainer.className = "in"
-}
-function handleCloseMenu() { 
-  menuContainer.className = "out"
-}
-
-function handleReplay(e,resizing = false) {
-  background(bgColor);
-  focalBuff.clear()
-  secBuff.clear()
-  focalBorderBuff.clear()
-  secBorderBuff.clear()
-  focalRect.replay()
-  secRect.replay()
-  
-  if (resizing === false) {
-    handleCloseMenu()
-    handleNormalSpeed()
-  }
-  handlePlay()
-}
-
-function handleNew() {
-  focalRect?.dispose()
-  secRect?.dispose()
-  const s = new Date().getTime()
-  console.log("seed", s)
-  randomSeed(s);
-  noiseSeed(s);
-  handleRectSetUp()
-  handleRectCreate()
-  handleReplay()
-}
-
-function handleResize() {
-  resizeCanvas(windowWidth, windowHeight)
-
-  focalBuff = createGraphics(width, height)
-  secBuff = createGraphics(width, height)
-  focalBuff.colorMode(HSL)
-  secBuff.colorMode(HSL)
-
-  secRect?.dispose()
-  focalRect?.dispose()
-
-  if (playButton.className === "hidden") {
-    handleRectCreate()
-    handleReplay(undefined,true)
-  }
-}
-
-function downloadBlob(blob, name) {
-  // Now, we need to create a download link for our new video file
-  const url = URL.createObjectURL(blob);
-  const downloadLink = document.createElement('a');
-  downloadLink.href = url;
-  downloadLink.download = name;
-
-  // We simulate a click on the download link, which triggers the browser's download action
-  document.body.appendChild(downloadLink);
-  downloadLink.click();
-
-  // We don't need the download link on the page anymore, so let's remove it
-  document.body.removeChild(downloadLink);
-}
-
-async function getAudioVideoStream() {
-  // Combine video from canvas and audio from Tone.js
-
-  const mediaStreamDestination = Tone.context.destination.context.createMediaStreamDestination();
-  Tone.Destination.connect(mediaStreamDestination);
-  const audioStream = mediaStreamDestination.stream;
-
-
-  const videoStream = document.querySelector('canvas').captureStream(musicFR); // 12 FPS
-  stream = new MediaStream([...videoStream.getVideoTracks(), ...audioStream.getAudioTracks()]);
-  startRecording();
-}
-
-function startRecording() {
-  let recorder = new MediaRecorder(stream);
-  recorder.ondataavailable = e => {
-    chunks.push(e.data);
-  };
-  recorder.onstop = () => downloadBlob(new Blob(chunks), "new-video.webm");
-  recorder.start();
-  console.log("Recording Started")
-}
-function stopRecording() {
-  console.log("Recording Stopped")
-  // Stop all tracks; this will trigger the recorder's "stop" event
-  stream.getTracks().forEach(track => track.stop());
-}
-
-//round to precision with epsilon
-function floorToPrecision(num, precision) {
-  // return num
-  const mult = pow(10,precision)
-  return floor((num + Number.EPSILON) * mult) / mult
-}
-
-function roundLastDigit(num) { 
-  return round(num / 10) * 10
-}
-
-function getStandardFactorOption() {
-  return random([
-    round(random(2, 13)),
-    159.5, 160.5, 161, 161.5,
-    215,
-    round(random(320, 323)) + random([0, 0.5]),
-    round(random(427, 431)),
-    513, 513.6, 514, 514.2, 514.6,
-    round(random(640, 646)) + random([0, 0.5]),
-    647,
-    round(random(855, 861)),
-    round(random(962, 964)) + random([0, 0.5]),
-    round(random(1280, 1284.9), 1)
-  ])
-}
-function getFactorOption(funcType) {
-  switch (funcType) { 
-    case "standard": return getStandardFactorOption();
-    case "cos":
-    case "sin":
-      return round(random(1, 640));
-    case "tan": return round(random(1, 90));
-    case "sq":
-    case "sqrt":
-      return round(random(1, 188));
-  }
-}
-
-function debounce(func, wait) {
-  let timeout;
-
-  return function(...args) {
-    const context = this;
-    const later = function() {
-      timeout = null;
-      func.apply(context, args);
-    };
-
-    clearTimeout(timeout);
-    timeout = setTimeout(later, wait);
-  };
 }
 
 //TOUCH FUNCTIONS
-let touchStartPos = null;
-let touchEndPos = null;
 let lastTouchTime = 0;
-
-const minSwipeDistance = 100;
 const doubleTapInterval = 400; // Time in milliseconds between taps to be considered a double tap
 
-
 function touchStarted(e) {
-  if (playButton.className !== "hidden") return
-  if (menuContainer.contains(e.target) || e.target === playButton) return
-
   let currentTime = millis();
   if (currentTime - lastTouchTime < doubleTapInterval) {
     //handle double tap
-    handlePlayToggle()
+    initBlocks()
   }
-
   // double tap
   lastTouchTime = currentTime;
-
-  //handle swipe
-  touchStartPos = createVector(mouseX, mouseY);
   return false
 }
 function mousePressed(e) {
   touchStarted(e)
 }
 
-function touchEnded(e) {
-  if (menuContainer.contains(e.target) || e.target === playButton) return
-  if (touchStartPos) { //handle swipe
-    touchEndPos = createVector(mouseX, mouseY);
+function drawBorder() {
+  strokeWeight(speed*2)
+  stroke(palette[floor(palette.length / 2)])
+  line(0, 0, width - 0, 0)
+  line(width - 0, 0, width - 0, height - 0)
+  line(width - 0, height - 0, 0, height - 0)
+  line(0, height - 0, 0, 0)
+}
 
-    const swipeVector = p5.Vector.sub(touchEndPos, touchStartPos);
-    const swipeDistance = swipeVector.mag();
-    if (swipeDistance >= minSwipeDistance) {
-      //swipes down / up
-      if (touchStartPos.y > touchEndPos.y) {
-        handleOpenMenu()
-      } else {
-        handleCloseMenu()
+
+function initBlocks() {
+  background(0, 0, 0);
+  palette = getPalette()
+  blockBrushes = []
+  const dim = max(width, height)
+
+  const mult = floorToBucket(dim/numBlocks[blockSize], blockSize*2)
+  for (let y = 0; y < height; y += mult) {
+    for (let x = 0; x < width; x += mult) {
+      blockBrushes.push(
+        new BlockBrush(x, y, blockSize, speed, blockBrushes.length + 1)
+      )
+    }
+  }
+
+
+  lifes = []
+  initLifes()
+}
+
+let newPaletteChance = 0
+
+function initLifes() {
+  if (random() < newPaletteChance) {
+    palette = getPalette()
+    newPaletteChance = 0
+
+    blockBrushes.forEach(block => {
+      block.randomizePattern()
+    })
+  } else {
+    newPaletteChance += 0.066
+  }
+  
+  let x = floorToBucket(random(width), speed)
+  let y = floorToBucket(random(height), speed)
+
+  occupied = blockBrushes.find(block => {
+    const blockX1 = block.position.x
+    const blockY1 = block.position.y
+    const blockX2 = blockX1 + block.size
+    const blockY2 = blockY1 + block.size
+
+    const xIntersect = x >= blockX1 && x <= blockX2 || x + this.speed >= blockX1 && x + this.speed <= blockX2
+    const yIntersect = y >= blockY1 && y <= blockY2 || y + this.speed >= blockY1 && y + this.speed <= blockY2
+    return xIntersect && yIntersect
+  })    
+  if (occupied) return
+
+  for (let i = 0; i < 4; i++) {
+    direction = map(i, 0, 4, 0, TWO_PI)
+    const index = floor(random(palette.length))
+    lifes.push(new Life(x, y, direction, speed, palette, index))
+  }
+}
+class Life {
+  constructor(x, y, direction, speed, palette, paletteIndex, initDirection = null, lifeSpan = null) {
+    this.pos = createVector(x, y)
+    this.direction = floorToBucket(direction, PI / 2)
+    this.initDirection = initDirection || direction
+    this.speed = speed
+    this.palette = palette
+    this.paletteIndex = paletteIndex
+    this.isDead = false
+    this.lifeSpan = lifeSpan ?? min(width, height) / speed * random(0.25,1)
+  }
+
+  show() {
+    noStroke()
+    fill(this.palette[this.paletteIndex])
+    square(this.pos.x, this.pos.y, this.speed)
+  }
+  move() {
+    const newX = this.pos.x + cos(this.direction) * this.speed
+    const newY = this.pos.y + sin(this.direction) * this.speed
+    this.pos = createVector(newX, newY)
+    this.lifeSpan--
+  }
+  birth() {
+    const isGridAligned = this.pos.x % this.speed === 0 && this.pos.y % this.speed === 0
+    if (!isGridAligned) return
+    
+    let newDirection = this.direction + random([-PI / 2, PI / 2])
+    
+    const newIndex = random() < 0.6
+      ? this.paletteIndex
+      : constrain(this.paletteIndex + random([-1, 1]), 0, this.palette.length - 1);
+    
+    const lifeSpan = this.lifeSpan * random(0.25, 1.1)
+    lifes.push(new Life(this.pos.x, this.pos.y, newDirection, this.speed, this.palette, newIndex, this.initDirection, lifeSpan));
+  }
+  checkDeath() {
+    //if off screen, die
+    if (this.lifeSpan <= 0) {
+      return this.isDead = true
+    }
+    if(this.pos.x < 0 || this.pos.x > width || this.pos.y < 0 || this.pos.y > height) {
+      return this.isDead = true
+    }
+  }
+}
+class FlowField {
+  constructor(blockSize, offSet) {
+    this.blockSize = blockSize
+    this.angles = []
+    this.offSet = offSet
+    this.offSetShift = 0.1
+    this.ratio = 0.0005;
+
+
+    this.buildField()
+  }
+
+  buildField() {
+    this.angles = []
+    const yMax = height / this.blockSize
+    const xMax = width / this.blockSize
+    for (let yInd = 0; yInd < yMax; yInd++) {
+      this.angles.push([])
+      for (let xInd = 0; xInd < xMax; xInd++) {
+        let angle
+        if (random() < 0.05) angle = null
+        else {
+          const x = xInd * this.blockSize
+          const y = yInd * this.blockSize
+          angle = this.getFlowAngleValue(x, y, this.offSet, this.ratio)
+        }
+        this.angles[yInd][xInd] = angle
       }
     }
   }
 
-  //reset touch variables
-  touchStartPos = null;
-  touchEndPos = null;
-  return false;
+  shiftField() {
+    this.offSet += this.offSetShift
+    this.buildField()
+  }
+
+  getFlowAngleValue(x, y, offSet, ratio) {
+    const normAN = noise(x * ratio + offSet, y * ratio + offSet)
+    const angle = floor(map(normAN, 0, 1, 0, 8)) * PI / 2
+    return angle
+  }
+
+  getAngle(x, y) {
+    const cx = constrain(x, 0, width)
+    const cy = constrain(y, 0, height)
+    let xInd = floor(cx / this.blockSize)
+    let yInd = floor(cy / this.blockSize)
+    return this.angles[yInd][xInd]
+  }
+
+  draw() {
+    this.angles.forEach((row, yInd) => {
+      row.forEach((angle, xInd) => {
+        if (angle === null) return;
+        const len = this.blockSize / 2
+        const x1 = (xInd * this.blockSize) + len / 2
+        const y1 = (yInd * this.blockSize) + len / 2
+        fill(0, 0, 100)
+        circle(x1, y1, len)
+
+        const x2 = x1 + cos(angle) * len
+        const y2 = y1 + sin(angle) * len
+        stroke(0, 0, 0)
+
+        line(x1, y1, x2, y2)
+      })
+    })
+  }
 }
-function mouseReleased(e) {
-  touchEnded(e)
+
+let brushColIndex = 0
+class BlockBrush {
+  constructor(x, y, size, space, id = random(1000)) {
+    this.position = createVector(x, y)
+    this.size = size
+    this.space = space
+    this.pattern = []
+    this.flowField = []
+    this.moveSpeed = space
+    this.shiftRatio = 0.05
+    this.prevAngle = null
+    this.id = id
+    this.flowField = new FlowField(size, random(1000))
+    this.lifeSpan = maxBlockLifeSpan
+
+    let yInd = 0
+    for (let py = y; py < y + size; py += space) {
+      this.pattern.push([])
+      for (let px = x; px < x + size; px += space) {
+        this.pattern[yInd].push(this.getRandColor(px, py))
+      }
+      yInd++
+    }
+    brushColIndex = (brushColIndex + 1) % 2
+  }
+
+  getRandColor(x,y) {
+    const blockColors = [color(0, 0, 0), color(0, 0, 100)]
+    return random(blockColors)
+    // return blockColors[brushColIndex]
+
+    //FROM PALETTE
+    // const nScale  = 0.05
+    // const pIndex = floor(map(noise(x*nScale,y*nScale), 0,1, 0, palette.length))
+    // return palette[pIndex]
+  }
+
+  checkPosition(x1, y1, x2, y2) { 
+    const occupied = blockBrushes.find(block => {
+      if (this.id === block.id) return false
+
+      const blockX1 = block.position.x
+      const blockY1 = block.position.y
+      const blockX2 = blockX1 + block.size
+      const blockY2 = blockY1 + block.size
+
+      const xIntersect = x1 >= blockX1 && x1 <= blockX2 || x2 >= blockX1 && x2 <= blockX2
+      const yIntersect = y1 >= blockY1 && y1 <= blockY2 || y2 >= blockY1 && y2 <= blockY2
+      return xIntersect && yIntersect
+    })
+    return Boolean(occupied)
+  }
+
+  move() {
+    this.lifeSpan--;
+    let angle;
+
+    const isGridAligned = this.position.x % this.size === 0 && this.position.y % this.size === 0
+    const inSpaceFull = this.position.x >= 0 && this.position.x <= width - this.size && this.position.y >= 0 && this.position.y <= height - this.size
+    this.inSpace = this.position.x > -this.size && this.position.x < width && this.position.y > -this.size && this.position.y < height
+    if (isGridAligned && inSpaceFull) {
+      angle = this.flowField.getAngle(this.position.x, this.position.y)
+      this.prevAngle = angle
+    } else {
+      angle = this.prevAngle
+    }
+
+    if (angle === null) return
+
+    let newX = this.position.x + cos(angle) * this.moveSpeed
+    let newY = this.position.y + sin(angle) * this.moveSpeed
+
+    const dfSize = this.size * 0.99
+
+    const centerX = this.position.x + this.size / 2
+    const centerY = this.position.y + this.size / 2
+
+    const dfXCenter = centerX + cos(angle) * (this.size + dfSize) * 0.5
+    const dfYCenter = centerY + sin(angle) * (this.size + dfSize) * 0.5
+    
+    const dfX1 = dfXCenter - dfSize/2
+    const dfY1 = dfYCenter - dfSize/2
+    const dfX2 = dfXCenter + dfSize/2
+    const dfY2 = dfYCenter + dfSize/2
+
+    // square(this.position.x, this.position.y, this.size)
+    
+    // noStroke()
+    // fill(0,100,50,0.25)
+    // beginShape()
+    // vertex(dfX1, dfY1)
+    // vertex(dfX2, dfY1)
+    // vertex(dfX2, dfY2)
+    // vertex(dfX1, dfY2)
+    // endShape(CLOSE)
+
+    if (isGridAligned) {
+      const posOccupied = this.checkPosition(dfX1, dfY1, dfX2, dfY2)
+      if (posOccupied) return
+    }
+
+    if (newX < -this.size) newX = width;
+    if (newX > width) newX = -this.size;
+    if (newY < -this.size) newY = height;
+    if (newY > height) newY = -this.size;
+
+    newX = round(newX)
+    newY = round(newY)
+
+    this.position = createVector(newX, newY)
+    this.lifeSpan = maxBlockLifeSpan
+  }
+
+  shiftPattern() {
+    for (let yInd = 0; yInd < this.pattern.length; yInd++) {
+      for (let xInd = 0; xInd < this.pattern[0].length; xInd++) {
+        const ratio = this.shiftRatio
+        const xInput = xInd * ratio + (this.id*0.1)
+        const yInput = yInd * ratio + (this.id*0.1)
+        const yN = noise(xInput, yInput, frameCount * ratio)
+        const xN = noise(xInput + 100, yInput + 100, frameCount * ratio + 100)
+
+        let newYInd = yInd + round(map(yN, 0, 1, -1, 1))
+        let newXInd = xInd + round(map(xN, 0, 1, -1, 1))
+
+        if (newYInd < 0) newYInd = this.pattern.length - 1
+        if (newYInd >= this.pattern.length) newYInd = 0
+
+        if (newXInd < 0) newXInd = this.pattern[0].length - 1
+        if (newXInd >= this.pattern[0].length) newXInd = 0
+
+        this.pattern[yInd][xInd] = this.pattern[newYInd][newXInd]
+      }
+    }
+  }
+
+  reset() {
+    const spaceCount = floor(width / this.size)
+    let posOccupied = true
+    let x, y
+    let tries = 0
+    while (posOccupied && tries < 10) {
+      tries++
+      const rand = this.size * floor(random(spaceCount)) 
+      
+      switch (this.prevAngle) {
+        case 0: {
+          x = -this.size
+          y = rand
+          break;
+        }
+        case PI / 2: { 
+          x = rand
+          y = -this.size
+          break;
+        }
+        case PI: { 
+          x = width
+          y = rand
+          break
+        }
+        case PI * 1.5: { 
+          x = rand
+          y = height
+          break
+        }
+      }
+      const x2 = x + this.size
+      const y2 = y + this.size
+      posOccupied = this.checkPosition(x,y,x2,y2)
+    }
+    this.position = createVector(x, y)
+    this.randomizePattern()
+  }
+
+  randomizePattern() {
+    for (let yInd = 0; yInd < this.pattern.length; yInd++) {
+      for (let xInd = 0; xInd < this.pattern[0].length; xInd++) {
+        const x = this.position.x + (this.space * xInd)
+        const y = this.position.y + (this.space * yInd)
+        this.pattern[yInd][xInd] = this.getRandColor(x, y)
+      }
+    }
+  }
+
+  draw() {
+    noStroke()
+    for (let yInd = 0; yInd < this.pattern.length; yInd++) {
+      const y = this.position.y + (this.space * yInd)
+      for (let xInd = 0; xInd < this.pattern[0].length; xInd++) {
+        const x = this.position.x + (this.space * xInd)
+        const col = this.pattern[yInd][xInd]
+        fill(col)
+        square(x, y, this.space)
+
+      }
+    }
+  }
 }
